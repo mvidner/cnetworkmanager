@@ -3,7 +3,7 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://creativecommons.org/licenses/by/3.0/
 
-VERSION = "0.1.666"
+VERSION = "0.2"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 import sys
@@ -22,6 +22,8 @@ DUMP_APS = False
 DUMP_ACTCON = False
 DUMP_SYSCON = False
 DUMP_USRCON = False
+CONNECT = False
+LOOP = False
 
 bus = dbus.SystemBus()
 
@@ -272,6 +274,9 @@ for arg in sys.argv:
     elif arg == "-a" or arg == "--ap":
         DUMP_APS = True
         DUMP_DEVS = True # aps are under wifi devs
+    elif arg == "-C":
+        CONNECT = True
+        LOOP = True
     elif arg == "--loop":
         LOOP = True
 
@@ -283,6 +288,8 @@ if HELP:
     print "  -s, --syscon list system connection settings"
     print "  -u, --usrcon list user connection settings (can CRASH nm-applet)"
     print "  -a, --ap     list found access points"
+    print "  -C           connect"
+    print "  --loop       loop to show dbus signals"
     sys.exit(0)
 
 nmp = '/org/freedesktop/NetworkManager'
@@ -314,6 +321,7 @@ class UserSettings(dbus.service.Object):
     def ListConnections(self):
         return ["/org/freedesktop/NetworkManagerSettings/1"]
 
+    #this is for EMITTING a signal, not receiving it
     @dbus.service.signal(dbus_interface='org.freedesktop.NetworkManagerSettings',
                              signature='o')
     def NewConnection(self, opath):
@@ -364,7 +372,15 @@ c = Connection("/org/freedesktop/NetworkManagerSettings/1")
 bus.request_name(USC)
 #os.system("sleep 3")
 
-todo = 5
+def reply_handler(*args):
+    print "REPLY:", args
+    global todo
+    todo = 0
+
+def uni_handler(*args):
+    print "UNI:", args
+
+todo = 15
 def doit():
     global todo
     todo = todo - 1
@@ -372,18 +388,42 @@ def doit():
     try:
         nmi.ActivateConnection(USC,
                            "/org/freedesktop/NetworkManagerSettings/1",
-                           "/org/freedesktop/Hal/devices/net_00_11_d8_70_00_2f",
-                           "/org/freedesktop/NetworkManager/AccessPoint/0")
+#                           "/org/freedesktop/Hal/devices/net_00_11_d8_70_00_2f", # ralink
+                           "/org/freedesktop/Hal/devices/net_00_11_d8_70_00_2f_0", # ralink
+                           "/org/freedesktop/NetworkManager/AccessPoint/0",
+                               reply_handler=reply_handler,
+                               error_handler=uni_handler,
+                               )
     except Exception, e:
         print str(e)
 
-def my_sig_handler(*args, **kwargs):
-    print "got signal:", args, kwargs
-    if todo > 0:
-        doit()
 
-bus.add_signal_receiver(my_sig_handler)
+def a1(s):
+    try:
+        return s[0]
+    except:
+        return ""
 
-us.NewConnection("/org/freedesktop/NetworkManagerSettings/1")
+def abbrev(s, sep):
+    words = s.split(sep)
+    words = map (a1, words)
+    return sep.join(words)
 
-loop()
+def abbr_signal_handler(*args, **kwargs):
+    ifc = kwargs["interface"]
+    sig = kwargs["member"]
+    opath = kwargs["path"]
+    line = "A %s: %s: %s%s" % (abbrev(ifc,".") , abbrev(opath,"/") , sig, args)
+    print line
+
+bus.add_signal_receiver(abbr_signal_handler,
+                        path_keyword="path",
+                        interface_keyword="interface",
+                        member_keyword="member")
+
+if CONNECT:
+    us.NewConnection("/org/freedesktop/NetworkManagerSettings/1")
+    doit()
+
+if LOOP:
+    loop()
