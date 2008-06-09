@@ -1,5 +1,6 @@
 0.4, Mon 2008-06-09
 New: changed license to GPLv2 or later, to match other parts of NM
+New: distinguish WEP, WPA, WPA2 for -n.
 New: -o, -w control online and WiFi status.
 New: basic device info for NM 0.6
 Fix: recognize Notification Messages in knetwormanagerrc.
