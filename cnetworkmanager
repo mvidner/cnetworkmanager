@@ -344,8 +344,18 @@ class cAP:
     
     def ListNets(self):
         mbr = self.appi.Get(NMI, "MaxBitrate") / 1000
-        priv = self.appi.Get(NMI, "Flags") and ", protected" or ""
-        print "%3d: %s (%dMb%s)" % (self.Strength(), self.Ssid(), mbr, priv)
+        priv = self.appi.Get(NMI, "Flags") != 0
+        wpa = self.appi.Get(NMI, "WpaFlags") != 0
+        wpa2 = self.appi.Get(NMI, "RsnFlags") != 0
+        priv_s = ""
+        if priv:
+            if not wpa and not wpa2:
+                priv_s = priv_s + " WEP"
+            if wpa:
+                priv_s = priv_s + " WPA"
+            if wpa2:
+                priv_s = priv_s + " WPA2"
+        print "%3d: %s (%dMb%s)" % (self.Strength(), self.Ssid(), mbr, priv_s)
 
 # Settings is overloaded
 class cApplet:
