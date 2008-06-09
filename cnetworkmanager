@@ -1,9 +1,9 @@
 #! /usr/bin/python
 # cnetworkmanager: Command Line Interface for NetworkManager
 # by: http://en.opensuse.org/User:Mvidner
-# license: http://creativecommons.org/licenses/by/3.0/
+# license: http://www.gnu.org/licenses/gpl-2.0.html or later
 
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False

@@ -1,0 +1,7 @@
+0.4, Mon 2008-06-09
+New: changed license to GPLv2 or later, to match other parts of NM
+New: -o, -w control online and WiFi status.
+New: basic device info for NM 0.6
+Fix: recognize Notification Messages in knetwormanagerrc.
+Fix: -u: better error message when applet not running.
+Fix: standardized option parsing, both -Cfoo and -C foo work.
