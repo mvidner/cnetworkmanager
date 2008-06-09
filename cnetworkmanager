@@ -3,26 +3,43 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://creativecommons.org/licenses/by/3.0/
 
-VERSION = "0.2"
+VERSION = "0.3"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
+norpm = False
 import sys
 import os
-import dbus
-import dbus.service
-import gobject
+import ConfigParser
+try:
+    import dbus
+    import dbus.service
+    import _dbus_bindings
+except:
+    print "Install python-1-dbus.rpm"
+    norpm = True
+import xml.dom.minidom
+try:
+    import gobject
+except:
+    # todo - only if loop wanted
+    print "Install python-gobject2.rpm"
+    norpm = True
+if norpm:
+    sys.exit(1)
 
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
 HELP = False
-NMVER = "07"
 DUMP_DEVS = False
 DUMP_APS = False
 DUMP_ACTCON = False
 DUMP_SYSCON = False
 DUMP_USRCON = False
+LIST_NETS = False
 CONNECT = False
+wanted_net = ""
+MONITOR = False
 LOOP = False
 
 bus = dbus.SystemBus()
@@ -38,231 +55,603 @@ PI = 'org.freedesktop.DBus.Properties'
 SSC = "org.freedesktop.NetworkManagerSystemSettings"
 USC = "org.freedesktop.NetworkManagerUserSettings"
 
-
 def introspect(obj):
     ii = dbus.Interface(obj, 'org.freedesktop.DBus.Introspectable')
     print ii.Introspect()
 
-# TODO: pull them from introspection.xml
-NM_STATE = ["UNKNOWN", "ASLEEP", "CONNECTING", "CONNECTED", "DISCONNECTED",]
+class cNM:
+    # TODO: pull them from introspection.xml
+    NM_STATE = ["UNKNOWN", "ASLEEP", "CONNECTING", "CONNECTED", "DISCONNECTED",]
 
-def dump_nm(opath):
-    nmo = bus.get_object(NMC, opath)
-    nmi = dbus.Interface(nmo, NMI)
-    nmpi = dbus.Interface(nmo, PI)
+    def __init__(self, opath):
+	self.opath = opath
+        self.nmo = bus.get_object(NMC, self.opath)
+        self.nmi = dbus.Interface(self.nmo, NMI)
+        self.nmpi = dbus.Interface(self.nmo, PI)
 
-    print "state:", NM_STATE[nmpi.Get(NMI, "State")]
-    print "wifi:", nmpi.Get(NMI, "WirelessEnabled")
-    print "wifi hw:", nmpi.Get(NMI, "WirelessHardwareEnabled")
-    # nmpi.Set(NMI, "WirelessEnabled", True)
-    # nmi.Sleep(True)
+    def Dump7(self):
+        print "State:", self.NM_STATE[self.nmpi.Get(NMI, "State")]
+        print "Wifi enabled:", self.nmpi.Get(NMI, "WirelessEnabled")
+        print "Wifi HW enabled:", self.nmpi.Get(NMI, "WirelessHardwareEnabled")
+        # self.nmpi.Set(NMI, "WirelessEnabled", True)
+        # self.nmi.Sleep(True)
 
-    if DUMP_DEVS:
-        devices = nmi.GetDevices()
-        for device in devices:
-            print device
-            dump_device(device)
+    def Dump6(self):
+        print "State:", self.NM_STATE[self.nmi.state()]
 
-    if DUMP_ACTCON:
-        print "Active Connections"
-        aconns = nmpi.Get(NMI, "ActiveConnections")
-        for aconn in aconns:
-            print aconn
-            dump_aconn(aconn)
+    def Dump0(self):
+        "Dumps its own info (not owned objects)."
 
-def dump_aconn(opath):
-    co = bus.get_object(NMC, opath)
-    copi = dbus.Interface(co, PI)
-    for P in ["ServiceName", "Connection", "SpecificObject", "SharedServiceName", "SharedConnection", "Devices"]:
-        print "  %s: %s" % (P, copi.Get(NMI, P))
+        try:
+            dummy = self.nmi.getDevices()
+            self.Dump6()
+        except:
+            self.Dump7()
 
-def dump_nm_06(opath):
-    nmo = bus.get_object(NMC, opath)
-    nmi = dbus.Interface(nmo, NMI)
+    def Dump(self):
+        self.Dump0()
+        if DUMP_DEVS:
+            for device in self.Devices():
+                device.Dump()
 
-    print "state:", NM_STATE[nmi.state()]
+        if DUMP_ACTCON:
+            print "Active Connections"
+            aconns = self.ActiveConnections()
+            for aconn in aconns:
+                aconn.Dump()
 
-    if DUMP_DEVS:
-        devices = nmi.getDevices()
-        for device in devices:
-            print device
-            dump_device_06(device)
+    def Devices(self):
+        try:
+            opaths = self.nmi.getDevices() # 0.6
+        except:
+            opaths = self.nmi.GetDevices()
+        return map(cDevice, opaths)
 
-    if DUMP_ACTCON:
-        print "Active Connections"
-        # FIXME
-        print nmi.GetActiveConnections()
+    def ListNets(self):
+        print "Wifi Networks:"
+        for dev in self.Devices():
+            dev.ListNets()
 
+    def ActiveConnections(self):
+        try:
+            aconns = self.nmi.GetActiveConnections() # 0.6
+        except:
+            aconns = self.nmpi.Get(NMI, "ActiveConnections")
+        return map(cActiveConnection, aconns)
+
+    def reply_handler(self, opath):
+        print "Connected:", opath
+
+    def err_handler(self, *args):
+        print "ERR:", args
+
+    def ActivateConnection(self, conn, device, ap):
+        self.nmi.ActivateConnection(USC,
+                                    conn.__dbus_object_path__,
+                                    device.opath,
+                                    ap.opath,
+                                    reply_handler=self.reply_handler,
+                                    error_handler=self.err_handler,
+                                    )
+
+class cActiveConnection:
+    def __init__(self, opath):
+        self.opath = opath
+
+    def Dump(self):
+       print self.opath
+       co = bus.get_object(NMC, self.opath)
+       copi = dbus.Interface(co, PI)
+       for P in ["ServiceName", "Connection", "SharedServiceName", "SharedConnection", "SpecificObject",]:
+           print "  %s: %s" % (P, copi.Get(NMI, P))
+       devs = copi.Get(NMI, "Devices")
+       print "  Devices:"
+       for dev in devs:
+           print "  ", dev
+   
 def bitmask_str(map, value):
     ret = []
     for mask, s in map.iteritems():
         if value & mask: ret.append(s)
     return ",".join(ret)
 
-def ip_str(i32):
-    ret = []
-    ret.append("%d" % (i32 % 256))
-    i32 /= 256
-    ret.append("%d" % (i32 % 256))
-    i32 /= 256
-    ret.append("%d" % (i32 % 256))
-    i32 /= 256
-    ret.append("%d" % (i32 % 256))
-    i32 /= 256
-    return ".".join(ret)
 
-NM_DEVICE_CAP = {1: "NM_SUPPORTED", 2: "CARRIER_DETECT",}
+class cDevice:
+    def __init__(self, opath):
+        self.opath = opath
+        self.devo = bus.get_object(NMC, self.opath)
+        self.devpi = dbus.Interface(self.devo, PI)
 
-NM_DEVICE_STATE = [
-    "UNKNOWN", "UNMANAGED", "UNAVAILABLE", "DISCONNECTED", "PREPARE", "CONFIG",
-    "NEED_AUTH", "IP_CONFIG", "ACTIVATED", "FAILED",]
+    DEVICE_TYPE = ["UNKNOWN", "802_3_ETHERNET", "802_11_WIRELESS",
+                   "GSM", "CDMA",]
 
-DEVICE_TYPE = ["UNKNOWN", "802_3_ETHERNET", "802_11_WIRELESS", "GSM", "CDMA",]
+    def DeviceType(self):
+        return self.DEVICE_TYPE[self.devpi.Get(NMI, "DeviceType")]
 
-def dump_ip4config(opath):
-    print "   Ip4Config:"
-    o = bus.get_object(NMC, opath)
-    pi = dbus.Interface(o, PI)
-    for P in ["Address", "Netmask", "Broadcast", "Gateway",]:
-        print "    %s: %s" % (P, ip_str(pi.Get(NMI, P)))
-    for P in ["Hostname", "Nameservers", "Domains", "NisDomain", "NisServers"]:
-        print "    %s: %s" % (P, pi.Get(NMI, P))
+    def IsWifi(self):
+        return self.DeviceType() == "802_11_WIRELESS"
+
+    def APs(self):
+        "Only for wifi"
+
+        self.wdevi = dbus.Interface(self.devo, NMI + ".Device.Wireless")
+        aps = self.wdevi.GetAccessPoints()
+        return map(cAP, aps)
+
+    def ip_str(self, i32):
+        ret = []
+        ret.append("%d" % (i32 % 256))
+        i32 /= 256
+        ret.append("%d" % (i32 % 256))
+        i32 /= 256
+        ret.append("%d" % (i32 % 256))
+        i32 /= 256
+        ret.append("%d" % (i32 % 256))
+        i32 /= 256
+        return ".".join(ret)
+
+    def DumpIp4Config(self, opath):
+        print "   Ip4Config:", opath
+        o = bus.get_object(NMC, opath)
+        pi = dbus.Interface(o, PI)
+        try:
+            for P in ["Address", "Netmask", "Broadcast", "Gateway",]: # beta2?
+                print "    %s: %s" % (P, self.ip_str(pi.Get(NMI, P)))
+        except:
+            print "    Addresses:"
+            addrs = pi.Get(NMI, "Addresses")
+            for addr in addrs:
+                print "     %s/%s via %s" %  tuple(map(self.ip_str, addr))
+        hn = pi.Get(NMI, "Hostname")
+        print "    Hostname:", hn
+        nss = pi.Get(NMI, "Nameservers")
+        print "    Nameservers:", " ".join(map(self.ip_str, nss))
+        doms = pi.Get(NMI, "Domains")
+        print "    Domains:", " ".join(doms)
+        nisd = pi.Get(NMI, "NisDomain")
+        print "    NisDomain:", nisd
+        niss = pi.Get(NMI, "NisServers")
+        print "    NisServers:", " ".join(map(self.ip_str, niss))
+
+    NM_DEVICE_CAP = {1: "NM_SUPPORTED", 2: "CARRIER_DETECT",}
+
+    NM_DEVICE_STATE = [
+        "UNKNOWN", "UNMANAGED", "UNAVAILABLE", "DISCONNECTED", "PREPARE",
+        "CONFIG", "NEED_AUTH", "IP_CONFIG", "ACTIVATED", "FAILED",]
     
+    def Dump7(self):
+        print "Device:"
+        # "Ip4Config", only for NM_DEVICE_STATE_ACTIVATED
+        for P in ["Udi", "Interface", "Driver",]:
+            print "  %s: %s" % (P, self.devpi.Get(NMI, P))
+        addr = self.devpi.Get(NMI, "Ip4Address")
+        print "  Ip4Address:", self.ip_str(addr)
+        caps = self.devpi.Get(NMI, "Capabilities")
+        print "  Capabilities:", bitmask_str(self.NM_DEVICE_CAP, caps)
+        state = self.NM_DEVICE_STATE[self.devpi.Get(NMI, "State")]
+        print "  Dev State:", state
+        if state == "ACTIVATED":
+            self.DumpIp4Config(self.devpi.Get(NMI, "Ip4Config"))
 
-def dump_device(opath):
-    devo = bus.get_object(NMC, opath)
-    devpi = dbus.Interface(devo, PI)
-    # "Ip4Config", only for NM_DEVICE_STATE_ACTIVATED
-    for P in ["Udi", "Interface", "Driver",]:
-        print "  %s: %s" % (P, devpi.Get(NMI, P))
-    addr = devpi.Get(NMI, "Ip4Address")
-    print "  Ip4Address:", ip_str(addr)
-    caps = devpi.Get(NMI, "Capabilities")
-    print "  Capabilities:", bitmask_str(NM_DEVICE_CAP, caps)
-    state = NM_DEVICE_STATE[devpi.Get(NMI, "State")]
-    print "  Dev State:", state
-    if state == "ACTIVATED":
-        dump_ip4config(devpi.Get(NMI, "Ip4Config"))
-    dt = DEVICE_TYPE[devpi.Get(NMI, "DeviceType")]
-    print "  Dev Type:", dt
-    if dt == "802_3_ETHERNET":
-        dump_device_eth(opath)
-    elif dt == "802_11_WIRELESS":
-        dump_device_wifi(opath)
+    def Dump6(self):
+        print "Device:"
+        print "  Driver:", devi.getDriver()
+        props = devi.getProperties()
+        # TODO: annotate struct
+        for prop in props:
+            print " ", prop
+    
+    def Dump0(self):
+        try:
+            a = self.devi.getDriver()
+            self.Dump6()
+        except:
+            self.Dump7()
 
-def dump_device_06(opath):
-    devo = bus.get_object(NMC, opath)
-    introspect(devo)
-    devi = dbus.Interface(devo, NMI + ".Device")
-    print "  Driver:", devi.getDriver()
-    props = devi.getProperties()
-    # TODO: annotate struct
-    for prop in props:
-        print " ", prop
+    def DumpEth(self):
+        for P in ["HwAddress", "Speed", "Carrier"]:
+            print "  %s: %s" % (P, self.devpi.Get(NMI, P))
 
-def dump_device_eth(opath):
-    devo = bus.get_object(NMC, opath)
-    devpi = dbus.Interface(devo, PI)
-    for P in ["HwAddress", "Speed", "Carrier"]:
-        print "  %s: %s" % (P, devpi.Get(NMI, P))
 
-IW_MODE = ["AUTO", "ADHOC", "INFRA", "MASTER", "REPEAT", "SECOND", "MONITOR",]
+    IW_MODE = ["AUTO", "ADHOC", "INFRA", "MASTER",
+               "REPEAT", "SECOND", "MONITOR",]
 
-NM_802_11_DEVICE_CAP = {1:"CIPHER_WEP40", 2:"CIPHER_WEP104", 4:"CIPHER_TKIP",
-                        8:"CIPHER_CCMP", 16:"WPA", 32:"RSN",}
+    NM_802_11_DEVICE_CAP = {1:"CIPHER_WEP40", 2:"CIPHER_WEP104",
+                            4:"CIPHER_TKIP", 8:"CIPHER_CCMP",
+                            16:"WPA", 32:"RSN",}
 
-def dump_device_wifi(opath):
-    devo = bus.get_object(NMC, opath)
-    devpi = dbus.Interface(devo, PI)
-    print "  Dev Mode:", IW_MODE[devpi.Get(NMI, "Mode")]
-    wcaps = devpi.Get(NMI, "WirelessCapabilities")
-    print "  Wifi Capabilities:", bitmask_str(NM_802_11_DEVICE_CAP, wcaps)
-    for P in ["HwAddress", "Bitrate", "ActiveAccessPoint"]:
-        print "  %s: %s" % (P, devpi.Get(NMI, P))
-    if DUMP_APS:
-        print "  Access Points"
-        wdevi = dbus.Interface(devo, NMI + ".Device.Wireless")
-        aps = wdevi.GetAccessPoints()
-        for ap in aps:
-            print "  ", ap
-            dump_access_point(ap)
+    def DumpWifi(self):
+        print "  Dev Mode:", self.IW_MODE[self.devpi.Get(NMI, "Mode")]
+        wcaps = self.devpi.Get(NMI, "WirelessCapabilities")
+        print "  Wifi Capabilities:", bitmask_str(self.NM_802_11_DEVICE_CAP, wcaps)
+        for P in ["HwAddress", "Bitrate", "ActiveAccessPoint"]:
+            print "  %s: %s" % (P, self.devpi.Get(NMI, P))
+        if DUMP_APS:
+            print "  Access Points"
+            for ap in self.APs():
+                ap.Dump()
 
-NM_802_11_AP_FLAGS = {1: "PRIVACY",}
+    def Dump(self):
+        self.Dump0()
+        dt = self.DeviceType()
+        print "  Dev Type:", dt
+        if dt == "802_3_ETHERNET":
+            self.DumpEth()
+        elif dt == "802_11_WIRELESS":
+            self.DumpWifi()
 
-NM_802_11_AP_SEC = {
-    1: "PAIR_WEP40", 2: "PAIR_WEP104", 4: "PAIR_TKIP", 8: "PAIR_CCMP",
-    16: "GROUP_WEP40", 32: "GROUP_WEP104", 64: "GROUP_TKIP",
-    128: "GROUP_CCMP", 256: "KEY_MGMT_PSK", 512: "KEY_MGMT_802_1X",}
+    def ListNets(self):
+        if self.IsWifi():
+            for ap in self.APs():
+                ap.ListNets()
 
-def ssid_str(array):
-    s = ""
-    for b in array:
-        s = s + ("%c" % b)
-    return s
+"""An AP found around us"""
+class cAP:
+    def __init__(self, opath):
+        self.opath = opath
+        self.apo = bus.get_object(NMC, self.opath)
+        self.appi = dbus.Interface(self.apo, PI)
 
-def dump_access_point(opath):
-    apo = bus.get_object(NMC, opath)
-    appi = dbus.Interface(apo, PI)
-    print "    Ssid:", ssid_str(appi.Get(NMI, "Ssid"))
-    # FIXME strength as number
-    for P in ["Frequency", "HwAddress", "MaxBitrate",]:
-        print "    %s: %s" % (P, appi.Get(NMI, P))
-    print "    Strength:", int(appi.Get(NMI, "Strength"))
-    print "    AP Mode:", IW_MODE[appi.Get(NMI, "Mode")]
-    print "    AP Flags:", bitmask_str(NM_802_11_AP_FLAGS,
-                                       appi.Get(NMI, "Flags"))
-    print "    AP WPA Flags:", bitmask_str(NM_802_11_AP_SEC,
-                                           appi.Get(NMI, "WpaFlags"))
-    print "    AP RSN Flags:", bitmask_str(NM_802_11_AP_SEC,
-                                           appi.Get(NMI, "RsnFlags"))
+    def ssid_str(noself, array):
+        s = ""
+        for b in array:
+            s = s + ("%c" % b)
+        return s
 
-def dump_settings(svc, obj):
-    si = dbus.Interface(obj, 'org.freedesktop.NetworkManagerSettings')
-    conns = si.ListConnections()
-    for conn in conns:
-        dump_settings_conn(svc, conn)
+    def Ssid(self):
+        return self.ssid_str(self.appi.Get(NMI, "Ssid"))
 
-def dump_system_settings(svc, obj):
-    sspi = dbus.Interface(obj, PI)
-    print "Unmanaged Devices"
-    umds = sspi.Get(NMI, "UnmanagedDevices")
-    for umd in umds:
-        print " ", umd
-        dump_settings_conn(svc, conn)
+    def Strength(self):
+        return int(self.appi.Get(NMI, "Strength"))
 
-def dump_settings_dict(settings):
-    for n1, v1 in settings.iteritems():
-        print " ",n1
-        for n2, v2 in v1.iteritems():        
-            print "   %s: %s" % (n2, v2)
+    NM_802_11_AP_FLAGS = {1: "PRIVACY",}
 
-def dump_settings_conn(svc, opath):
-    print "Conn:",opath
-    co = bus.get_object(svc, opath)
-    ci = dbus.Interface(co, 'org.freedesktop.NetworkManagerSettings.Connection')
-    print " Id:", ci.GetID()
-    settings = ci.GetSettings()
-    dump_settings_dict(settings)
-    si = dbus.Interface(co, 'org.freedesktop.NetworkManagerSettings.Connection.Secrets')
-    print " SECRETS"
-    secrets = si.GetSecrets("802-11-wireless-security",[],False)
-    dump_settings_dict(secrets)
+    NM_802_11_AP_SEC = {
+        1: "PAIR_WEP40", 2: "PAIR_WEP104", 4: "PAIR_TKIP", 8: "PAIR_CCMP",
+        16: "GROUP_WEP40", 32: "GROUP_WEP104", 64: "GROUP_TKIP",
+        128: "GROUP_CCMP", 256: "KEY_MGMT_PSK", 512: "KEY_MGMT_802_1X",}
 
-def loop():
-    loop = gobject.MainLoop()
-    try:
-        loop.run()
-    except:
-        print "Loop exited"
+    def Dump(self):
+        print "  AP:", self.opath
+        print "    Ssid:", self.Ssid()
+        for P in ["Frequency", "HwAddress", "MaxBitrate",]:
+            print "    %s: %s" % (P, self.appi.Get(NMI, P))
+        print "    Strength:", self.Strength()
+        print "    AP Mode:", cDevice.IW_MODE[self.appi.Get(NMI, "Mode")]
+        print "    AP Flags:", bitmask_str(self.NM_802_11_AP_FLAGS,
+                                           self.appi.Get(NMI, "Flags"))
+        print "    AP WPA Flags:", bitmask_str(self.NM_802_11_AP_SEC,
+                                               self.appi.Get(NMI, "WpaFlags"))
+        print "    AP RSN Flags:", bitmask_str(self.NM_802_11_AP_SEC,
+                                               self.appi.Get(NMI, "RsnFlags"))
+    
+    def ListNets(self):
+        mbr = self.appi.Get(NMI, "MaxBitrate") / 1000
+        priv = self.appi.Get(NMI, "Flags") and ", protected" or ""
+        print "%3d: %s (%dMb%s)" % (self.Strength(), self.Ssid(), mbr, priv)
 
+# Settings is overloaded
+class cApplet:
+    def __init__(self, svc, opath):
+        self.svc = svc
+        self.opath = opath
+        self.so = bus.get_object(self.svc, self.opath)
+        self.si = dbus.Interface(self.so, 'org.freedesktop.NetworkManagerSettings')
+
+    def isSystem(self):
+        return self.svc == SSC;
+
+    def Dump(self):
+        for conn in self.Connections():
+            conn.Dump()
+        if self.isSystem():
+            self.DumpSystem()
+
+    def DumpSystem(self):
+        sspi = dbus.Interface(self.so, PI)
+        print "Unmanaged Devices"
+        umds = sspi.Get(NMI, "UnmanagedDevices")
+        for umd in umds:
+            print " ", umd
+           #  dump_settings_conn(svc, conn) umd?
+
+
+    def myConnection(self, opath):
+        return cConnection(self.svc, opath)
+
+    def Connections(self):
+        opaths = self.si.ListConnections()
+        return map(self.myConnection, opaths)
+
+class cConnection:
+    def __init__(self, svc, opath):
+        self.svc = svc
+        self.opath = opath
+        self.co = bus.get_object(self.svc, self.opath)
+        self.ci = dbus.Interface(self.co, 'org.freedesktop.NetworkManagerSettings.Connection')
+
+    def Dump(self):
+       print "Conn:", self.opath
+       print " Id:", self.ci.GetID()
+       settings = self.Settings()
+       settings.Dump()
+
+       si = dbus.Interface(self.co, 'org.freedesktop.NetworkManagerSettings.Connection.Secrets')
+       security = settings.Security()
+       if security != "":
+           print " SECRETS:", security
+           # TODO merge them
+           secrets = cSettings(si.GetSecrets(security,[],False))
+           secrets.Dump()
+
+    def Settings(self):
+        return cSettings(self.ci.GetSettings())
+
+
+class cSettings:
+    def __init__(self, conmap):
+        self.conmap = conmap
+
+    def Type(self):
+        return self.conmap["connection"]["type"]
+
+    def GetID(self):
+        return self.conmap["connection"]["id"]
+
+    def Security(self):
+        try:
+            return self.conmap[self.Type()]["security"]
+        except KeyError:
+            return ""
+
+    def isNet(self, net_name):
+        # FIXME also ssid ...
+        return self.GetID() == net_name
+
+    # FIXME check spec/NM what to censor
+    secrets = dict.fromkeys(["wep-key0", "psk"])
+
+    def ConMap(self):
+        "For GetSettings: censor secrets."
+
+        cm = dict()
+        for n1, v1 in self.conmap.iteritems():
+            cm[n1] = dict()
+            for n2, v2 in v1.iteritems():
+                cv2 = v2
+                if self.secrets.has_key(n2):
+                    cv2 = ""
+                cm[n1][n2] = cv2
+        return cm
+
+    def SecMap(self):
+        "For GetSecrets: only secrets."
+        s = self.Security()
+        r = {
+            s: self.conmap[s]
+            }
+        print "SECMAP", r
+        return r
+
+    def Dump(self):
+        for n1, v1 in self.conmap.iteritems():
+            print " ",n1
+            for n2, v2 in v1.iteritems():        
+                print "   %s: %s" % (n2, v2)
+
+# just an example, unused  now
+hardwired_conmaps = [
+    {
+        "connection": {
+            "id": "onenet",
+            "type": "802-11-wireless",
+            },
+        "802-11-wireless": {
+            "ssid": dbus.ByteArray("onenet"),
+            "mode": "infrastructure",
+            "security": "802-11-wireless-security",
+            },
+        #  ipv4
+        #   method: dhcp
+        "802-11-wireless-security": {
+            "key-mgmt": "wpa-psk",
+            "wep-tx-keyidx": 0,
+            "psk": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", # CENSORED
+            },
+        },
+    {
+        'connection': {
+            'id': 'frogs',
+            'type': '802-11-wireless',
+            },
+        '802-11-wireless': {
+            'ssid': dbus.ByteArray('frogs'),
+            'mode': 'infrastructure',
+            'security': '802-11-wireless-security',
+            },
+        '802-11-wireless-security': {
+            'key-mgmt': 'none',
+            'wep-tx-keyidx': 0,
+            'wep-key0': 'aaaaaaaaaaaaaaaaaaaaaaaaaa', # CENSORED
+            },
+        },
+    ]
+
+# server analog of cApplet
+class UserSettings(dbus.service.Object):
+    # conmaps is a list
+    def __init__(self, opath, conmaps):
+        dbus.service.Object.__init__(self, bus, opath)
+        #print "CONMAPS:", conmaps
+        self.conns = map(self.newCon, conmaps)
+
+    counter = 1
+    def newCon(self, conmap):
+        cpath = "/MyConnection/%d" % self.counter
+        self.counter = self.counter + 1
+        c = Connection(cpath, conmap)
+        self.NewConnection(cpath) # announce it
+        return c
+
+    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings',
+                             in_signature='', out_signature='ao')
+    def ListConnections(self):
+        return [c.__dbus_object_path__ for c in self.conns]
+
+    #this is for EMITTING a signal, not receiving it
+    @dbus.service.signal(dbus_interface='org.freedesktop.NetworkManagerSettings',
+                             signature='o')
+    def NewConnection(self, opath):
+        pass
+        #print "signalling newconn:", opath
+
+    def GetByNet(self, net_name):
+        "Returns connection, or None"
+        for c in self.conns:
+            if c.isNet(net_name):
+                return c
+        return None
+
+
+# server analog of cConnection
+class Connection(dbus.service.Object):
+    def __init__(self, opath, conmap):
+        dbus.service.Object.__init__(self, bus, opath)
+        self.settings = cSettings(conmap)
+
+    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection',
+                             in_signature='', out_signature='a{sa{sv}}')
+    def GetSettings(self):
+        #print "Getting settings:", self. __dbus_object_path__
+#        return self.settings.ConMap()
+# grr, censoring secrets makes NM complain!?
+        return self.settings.conmap
+
+    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection.Secrets',
+                             in_signature='sasb', out_signature='a{sa{sv}}')
+    def GetSecrets(self, tag, hints, ask):
+        # FIXME respect args
+        print "Getting secrets:", self.__dbus_object_path__
+        return self.settings.SecMap()
+
+    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection',
+                             in_signature='', out_signature='s')
+    def GetID(self):
+        return self.settings.GetID()
+
+    def isNet(self, net_name):
+        return self.settings.isNet(net_name)
+
+class ConfigParserKNM:
+    "Parse ~/.kde/share/config/knetworkmanagerrc"
+
+    def __init__(self):
+        p = ConfigParser.RawConfigParser()
+        ok = p.read(os.getenv("HOME") + "/.kde/share/config/knetworkmanagerrc")
+
+        self.conmaps_d = {}
+        for s in p.sections():
+            path = s.split("_")
+            if path[0] != "Connection":
+                cid = path[1]
+                self.conmaps_d.setdefault(cid, {})
+                part = path[2]
+
+                values = {}
+                for (n, v) in p.items(s):
+                    # WTF, Value_ is transfrmed to value_
+                    if n[:6]  == "value_":
+                        n = n[6:]
+                        v = self.ParseValue(v)
+                        values[n] = v
+                if len(values) != 0: # empty 802-1x confuses NM!?
+                    self.conmaps_d[cid].setdefault(part, {})
+                    self.conmaps_d[cid][part].update(**values)
+                #print "PARSED", cid, part, values
+
+    def ConMaps(self):
+        return self.conmaps_d.values()
+
+    def ParseValue(self, v):
+        v = eval('"%s"' % v)    # unescape backslashes
+        dom = xml.dom.minidom.parseString(v)
+        return self.ParseNode(dom.documentElement)
+
+    def ParseNode(self, n):
+        t = n.localName
+        if t != "list":
+            v = self.NodeText(n)
+
+        if t == "string":
+            return v
+        elif t == "byte":
+            return dbus.Byte(int(v))
+        elif t == "bool":
+            return v == "true"
+        elif t == "int32" or t == "uint32":
+            return int(v)
+        elif t == "list":
+            v = []
+            c = n.firstChild
+            while c != None:
+                if c.localName != None: # whitespace
+                    v.append(self.ParseNode(c))
+                c = c.nextSibling
+            return v
+
+    def NodeText(self, n):
+        if n.hasChildNodes():
+            return n.firstChild.wholeText
+        else:
+            return ""
+
+def abbr_signal_handler(*args, **kwargs):
+    ifc = kwargs["interface"]
+    sig = kwargs["member"]
+    opath = kwargs["path"]
+    line = "SIG %s: %s.%s%s" % (abbrev(opath,"/"), abbrev(ifc,"."), sig, args)
+    print line
+
+class Monitor:
+    def __init__(self):
+        self.amap = {}
+        bus.add_signal_receiver(self.abbr_signal_handler,
+                        path_keyword="path",
+                        interface_keyword="interface",
+                        member_keyword="member")
+
+    def abbr_signal_handler(self, *args, **kwargs):
+        ifc = kwargs["interface"]
+        sig = kwargs["member"]
+        opath = kwargs["path"]
+        line = "SIG %s: %s.%s%s" % (self.abbrev(opath,"/"),
+                                    self.abbrev(ifc,"."),
+                                    sig, args)
+        print line
+
+    def abbrev(self, s, sep):
+        words = s.split(sep)
+        words = map (self.a1, words)
+        result = sep.join(words)
+        if not self.amap.has_key(s):
+            print "ABBR %s is %s" % (result, s)
+            self.amap[s] = result
+        else:
+            if self.amap[s] != result:
+                print "ABBR COLLISION %s was %s now %s" % (s, self.amap[s], result)
+        return result
+    
+    def a1(self, s):
+        try:
+            return s[0]
+        except:
+            return ""
 
 # main
 
 for arg in sys.argv:
     if arg == "-h" or arg == "--help":
         HELP = True
-    elif arg == "--06":
-        NMVER = "06"
     elif arg == "-d" or arg == "--dev":
         DUMP_DEVS = True
     elif arg == "-c" or arg == "--actcon":
@@ -274,156 +663,101 @@ for arg in sys.argv:
     elif arg == "-a" or arg == "--ap":
         DUMP_APS = True
         DUMP_DEVS = True # aps are under wifi devs
-    elif arg == "-C":
+    elif arg == "-n" or arg == "--nets":
+        LIST_NETS = True
+    elif arg[:2] == "-C":
         CONNECT = True
-        LOOP = True
-    elif arg == "--loop":
+        wanted_net = arg[2:]
+    elif arg[:10] == "--connect=":
+        CONNECT = True
+        wanted_net = arg[10:]
+    elif arg == "-m" or arg == "--monitor":
+        MONITOR = True
         LOOP = True
 
 if HELP:
     print "Options:"
-    print "  -6, --06     assume NetworkManager 0.6 API"
-    print "  -d, --dev    list devices"
-    print "  -c, --actcon list active connections"
-    print "  -s, --syscon list system connection settings"
-    print "  -u, --usrcon list user connection settings (can CRASH nm-applet)"
-    print "  -a, --ap     list found access points"
-    print "  -C           connect"
-    print "  --loop       loop to show dbus signals"
+    print "  -d, --dev     list devices"
+    print "  -c, --actcon  list active connections"
+    print "  -s, --syscon  list system connection settings"
+    print "  -u, --usrcon  list user connection settings (can CRASH nm-applet)"
+    print "  -a, --ap      list found access points"
+    print "  -n, --nets    list found wireless networks"
+    print "  -C<net>, --connect=<net> connect to a wireless network (using knetworkmanagerrc)"
+    print "  -m, --monitor loop to show dbus signals"
     sys.exit(0)
 
 nmp = '/org/freedesktop/NetworkManager'
-# TODO autodetect (try getDevices?)
-if NMVER == "06":
-    dump_nm_06(nmp)
-else:
-    dump_nm(nmp)
+nm = cNM(nmp)
+if DUMP_DEVS or DUMP_ACTCON:
+    nm.Dump()
+
+if LIST_NETS:
+    nm.ListNets()
 
 if DUMP_SYSCON:
     print "SYSTEM Connections"
-    sso = bus.get_object(SSC, '/org/freedesktop/NetworkManagerSettings')
-    dump_settings(SSC, sso)
-    dump_system_settings(SSC, sso)
+    ss = cApplet(SSC, '/org/freedesktop/NetworkManagerSettings')
+    ss.Dump()
 
 if DUMP_USRCON:
     print "USER Connections"
-    uso = bus.get_object(USC, '/org/freedesktop/NetworkManagerSettings')
-    dump_settings(USC, uso)
-
-#sys.exit(0)
-
-class UserSettings(dbus.service.Object):
-    def __init__(self, opath):
-        dbus.service.Object.__init__(self, bus, opath)
-
-    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings',
-                             in_signature='', out_signature='ao')
-    def ListConnections(self):
-        return ["/org/freedesktop/NetworkManagerSettings/1"]
-
-    #this is for EMITTING a signal, not receiving it
-    @dbus.service.signal(dbus_interface='org.freedesktop.NetworkManagerSettings',
-                             signature='o')
-    def NewConnection(self, opath):
-        print "signalling newconn:", opath
-
-class Connection(dbus.service.Object):
-    def __init__(self, opath):
-        dbus.service.Object.__init__(self, bus, opath)
-
-    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection',
-                             in_signature='', out_signature='a{sa{sv}}')
-    def GetSettings(self):
-        return {
-            'connection': {
-                'id': 'frogcon',
-                'type': '802-11-wireless',
-                },
-            '802-11-wireless': {
-                'ssid': dbus.ByteArray('frogs'),
-                'mode': 'infrastructure',
-                'security': '802-11-wireless-security',
-                },
-            '802-11-wireless-security': {
-                'key-mgmt': 'none',
-                'wep-tx-keyidx': 0,
-#                'auth-alg': 'shared',
-                },
-            }
-    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection.Secrets',
-                             in_signature='sasb', out_signature='a{sa{sv}}')
-    def GetSecrets(self,tag,hints,ask):
-        return {
-            '802-11-wireless-security': {
-                'key-mgmt': 'none',
-                'wep-tx-keyidx': 0,
-#FIXME SECRET
-                'wep-key0': '66666666666666666666666666', # secret hint
-                },
-            }
+    us = cApplet(USC, '/org/freedesktop/NetworkManagerSettings')
+    us.Dump()
     
 
 nmo = bus.get_object(NMC, nmp)
 nmi = dbus.Interface(nmo, NMI)
 
-us = UserSettings("/org/freedesktop/NetworkManagerSettings")
-c = Connection("/org/freedesktop/NetworkManagerSettings/1")
+if CONNECT:
+    brn = bus.request_name(USC, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
+    if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
+        print "Could not provide settings service, another applet is running"
+        sys.exit(1)
+    cfg = ConfigParserKNM()
+    us = UserSettings("/org/freedesktop/NetworkManagerSettings",
+                      cfg.ConMaps())
 
-bus.request_name(USC)
-#os.system("sleep 3")
+def Connect(wanted_net):  # any. or take arg. net is config name or ssid name
+    #  ... in general, look for string in all config data. ssid for wifi, whatever for dialup
+    # TODO also respect autoconnect
 
-def reply_handler(*args):
-    print "REPLY:", args
-    global todo
-    todo = 0
-
-def uni_handler(*args):
-    print "UNI:", args
-
-todo = 15
-def doit():
-    global todo
-    todo = todo - 1
-    print "doing it"
-    try:
-        nmi.ActivateConnection(USC,
-                           "/org/freedesktop/NetworkManagerSettings/1",
-#                           "/org/freedesktop/Hal/devices/net_00_11_d8_70_00_2f", # ralink
-                           "/org/freedesktop/Hal/devices/net_00_11_d8_70_00_2f_0", # ralink
-                           "/org/freedesktop/NetworkManager/AccessPoint/0",
-                               reply_handler=reply_handler,
-                               error_handler=uni_handler,
-                               )
-    except Exception, e:
-        print str(e)
-
-
-def a1(s):
-    try:
-        return s[0]
-    except:
-        return ""
-
-def abbrev(s, sep):
-    words = s.split(sep)
-    words = map (a1, words)
-    return sep.join(words)
-
-def abbr_signal_handler(*args, **kwargs):
-    ifc = kwargs["interface"]
-    sig = kwargs["member"]
-    opath = kwargs["path"]
-    line = "A %s: %s: %s%s" % (abbrev(ifc,".") , abbrev(opath,"/") , sig, args)
-    print line
-
-bus.add_signal_receiver(abbr_signal_handler,
-                        path_keyword="path",
-                        interface_keyword="interface",
-                        member_keyword="member")
+    # ActivateConn wants setting device ap; can find device from ap? ap is "specific" for wifi devices
+    #print "Connection wanted to", wanted_net
+    found_con = found_ap = found_dev = None
+    for dev in nm.Devices():
+      if dev.IsWifi():
+	for ap in dev.APs():
+	    if wanted_net == ap.Ssid():
+		found_ap = ap
+		found_dev = dev
+		break # FIXME both loops
+    found_con = us.GetByNet(wanted_net)
+    if found_ap == None:
+	print "No AP found with SSID", wanted_net
+        return False
+    elif found_con == None:
+        print "No settings for net", wanted_net
+        return False
+    else:
+	nm.ActivateConnection(found_con, found_dev, found_ap) # TODO async
+	# TODO run loop, exit it when we have serviced the required calls
+        return True
 
 if CONNECT:
-    us.NewConnection("/org/freedesktop/NetworkManagerSettings/1")
-    doit()
+    if Connect(wanted_net):
+        LOOP = True
+    
+
+if MONITOR:
+    m = Monitor()
+
+def loop():
+    loop = gobject.MainLoop()
+    try:
+        loop.run()
+    except:
+        print "Loop exited"
 
 if LOOP:
     loop()
