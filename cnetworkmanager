@@ -3,11 +3,13 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://creativecommons.org/licenses/by/3.0/
 
-VERSION = "0.1"
+VERSION = "0.1.666"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 import sys
+import os
 import dbus
+import dbus.service
 import gobject
 
 from dbus.mainloop.glib import DBusGMainLoop
@@ -95,23 +97,50 @@ def bitmask_str(map, value):
         if value & mask: ret.append(s)
     return ",".join(ret)
 
+def ip_str(i32):
+    ret = []
+    ret.append("%d" % (i32 % 256))
+    i32 /= 256
+    ret.append("%d" % (i32 % 256))
+    i32 /= 256
+    ret.append("%d" % (i32 % 256))
+    i32 /= 256
+    ret.append("%d" % (i32 % 256))
+    i32 /= 256
+    return ".".join(ret)
+
 NM_DEVICE_CAP = {1: "NM_SUPPORTED", 2: "CARRIER_DETECT",}
 
 NM_DEVICE_STATE = [
-    "UNKNOWN", "DOWN", "DISCONNECTED", "PREPARE", "CONFIG",
-    "NEED_AUTH", "IP_CONFIG", "ACTIVATED", "FAILED", "CANCELLED",]
+    "UNKNOWN", "UNMANAGED", "UNAVAILABLE", "DISCONNECTED", "PREPARE", "CONFIG",
+    "NEED_AUTH", "IP_CONFIG", "ACTIVATED", "FAILED",]
 
 DEVICE_TYPE = ["UNKNOWN", "802_3_ETHERNET", "802_11_WIRELESS", "GSM", "CDMA",]
+
+def dump_ip4config(opath):
+    print "   Ip4Config:"
+    o = bus.get_object(NMC, opath)
+    pi = dbus.Interface(o, PI)
+    for P in ["Address", "Netmask", "Broadcast", "Gateway",]:
+        print "    %s: %s" % (P, ip_str(pi.Get(NMI, P)))
+    for P in ["Hostname", "Nameservers", "Domains", "NisDomain", "NisServers"]:
+        print "    %s: %s" % (P, pi.Get(NMI, P))
+    
 
 def dump_device(opath):
     devo = bus.get_object(NMC, opath)
     devpi = dbus.Interface(devo, PI)
     # "Ip4Config", only for NM_DEVICE_STATE_ACTIVATED
-    for P in ["Udi", "Interface", "Driver", "Ip4Address"]:
+    for P in ["Udi", "Interface", "Driver",]:
         print "  %s: %s" % (P, devpi.Get(NMI, P))
+    addr = devpi.Get(NMI, "Ip4Address")
+    print "  Ip4Address:", ip_str(addr)
     caps = devpi.Get(NMI, "Capabilities")
     print "  Capabilities:", bitmask_str(NM_DEVICE_CAP, caps)
-    print "  Dev State:", NM_DEVICE_STATE[devpi.Get(NMI, "State")]
+    state = NM_DEVICE_STATE[devpi.Get(NMI, "State")]
+    print "  Dev State:", state
+    if state == "ACTIVATED":
+        dump_ip4config(devpi.Get(NMI, "Ip4Config"))
     dt = DEVICE_TYPE[devpi.Get(NMI, "DeviceType")]
     print "  Dev Type:", dt
     if dt == "802_3_ETHERNET":
@@ -174,8 +203,9 @@ def dump_access_point(opath):
     appi = dbus.Interface(apo, PI)
     print "    Ssid:", ssid_str(appi.Get(NMI, "Ssid"))
     # FIXME strength as number
-    for P in ["Frequency", "HwAddress", "MaxBitrate", "Strength"]:
+    for P in ["Frequency", "HwAddress", "MaxBitrate",]:
         print "    %s: %s" % (P, appi.Get(NMI, P))
+    print "    Strength:", int(appi.Get(NMI, "Strength"))
     print "    AP Mode:", IW_MODE[appi.Get(NMI, "Mode")]
     print "    AP Flags:", bitmask_str(NM_802_11_AP_FLAGS,
                                        appi.Get(NMI, "Flags"))
@@ -184,10 +214,18 @@ def dump_access_point(opath):
     print "    AP RSN Flags:", bitmask_str(NM_802_11_AP_SEC,
                                            appi.Get(NMI, "RsnFlags"))
 
-def dump_settings(svc,obj):
+def dump_settings(svc, obj):
     si = dbus.Interface(obj, 'org.freedesktop.NetworkManagerSettings')
     conns = si.ListConnections()
     for conn in conns:
+        dump_settings_conn(svc, conn)
+
+def dump_system_settings(svc, obj):
+    sspi = dbus.Interface(obj, PI)
+    print "Unmanaged Devices"
+    umds = sspi.Get(NMI, "UnmanagedDevices")
+    for umd in umds:
+        print " ", umd
         dump_settings_conn(svc, conn)
 
 def dump_settings_dict(settings):
@@ -247,18 +285,105 @@ if HELP:
     print "  -a, --ap     list found access points"
     sys.exit(0)
 
+nmp = '/org/freedesktop/NetworkManager'
 # TODO autodetect (try getDevices?)
 if NMVER == "06":
-    dump_nm_06('/org/freedesktop/NetworkManager')
+    dump_nm_06(nmp)
 else:
-    dump_nm('/org/freedesktop/NetworkManager')
+    dump_nm(nmp)
 
 if DUMP_SYSCON:
     print "SYSTEM Connections"
     sso = bus.get_object(SSC, '/org/freedesktop/NetworkManagerSettings')
     dump_settings(SSC, sso)
+    dump_system_settings(SSC, sso)
 
 if DUMP_USRCON:
     print "USER Connections"
     uso = bus.get_object(USC, '/org/freedesktop/NetworkManagerSettings')
     dump_settings(USC, uso)
+
+#sys.exit(0)
+
+class UserSettings(dbus.service.Object):
+    def __init__(self, opath):
+        dbus.service.Object.__init__(self, bus, opath)
+
+    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings',
+                             in_signature='', out_signature='ao')
+    def ListConnections(self):
+        return ["/org/freedesktop/NetworkManagerSettings/1"]
+
+    @dbus.service.signal(dbus_interface='org.freedesktop.NetworkManagerSettings',
+                             signature='o')
+    def NewConnection(self, opath):
+        print "signalling newconn:", opath
+
+class Connection(dbus.service.Object):
+    def __init__(self, opath):
+        dbus.service.Object.__init__(self, bus, opath)
+
+    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection',
+                             in_signature='', out_signature='a{sa{sv}}')
+    def GetSettings(self):
+        return {
+            'connection': {
+                'id': 'frogcon',
+                'type': '802-11-wireless',
+                },
+            '802-11-wireless': {
+                'ssid': dbus.ByteArray('frogs'),
+                'mode': 'infrastructure',
+                'security': '802-11-wireless-security',
+                },
+            '802-11-wireless-security': {
+                'key-mgmt': 'none',
+                'wep-tx-keyidx': 0,
+#                'auth-alg': 'shared',
+                },
+            }
+    @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection.Secrets',
+                             in_signature='sasb', out_signature='a{sa{sv}}')
+    def GetSecrets(self,tag,hints,ask):
+        return {
+            '802-11-wireless-security': {
+                'key-mgmt': 'none',
+                'wep-tx-keyidx': 0,
+#FIXME SECRET
+                'wep-key0': '66666666666666666666666666', # secret hint
+                },
+            }
+    
+
+nmo = bus.get_object(NMC, nmp)
+nmi = dbus.Interface(nmo, NMI)
+
+us = UserSettings("/org/freedesktop/NetworkManagerSettings")
+c = Connection("/org/freedesktop/NetworkManagerSettings/1")
+
+bus.request_name(USC)
+#os.system("sleep 3")
+
+todo = 5
+def doit():
+    global todo
+    todo = todo - 1
+    print "doing it"
+    try:
+        nmi.ActivateConnection(USC,
+                           "/org/freedesktop/NetworkManagerSettings/1",
+                           "/org/freedesktop/Hal/devices/net_00_11_d8_70_00_2f",
+                           "/org/freedesktop/NetworkManager/AccessPoint/0")
+    except Exception, e:
+        print str(e)
+
+def my_sig_handler(*args, **kwargs):
+    print "got signal:", args, kwargs
+    if todo > 0:
+        doit()
+
+bus.add_signal_receiver(my_sig_handler)
+
+us.NewConnection("/org/freedesktop/NetworkManagerSettings/1")
+
+loop()
