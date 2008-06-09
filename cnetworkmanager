@@ -3,13 +3,14 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://creativecommons.org/licenses/by/3.0/
 
-VERSION = "0.3"
+VERSION = "0.3.1"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False
 import sys
 import os
-import ConfigParser
+import ConfigParser             # knm config
+from optparse import OptionParser
 try:
     import dbus
     import dbus.service
@@ -24,22 +25,13 @@ except:
     # todo - only if loop wanted
     print "Install python-gobject2.rpm"
     norpm = True
+# python-gnome.rpm has gconf for nm-applet...
 if norpm:
     sys.exit(1)
 
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
-HELP = False
-DUMP_DEVS = False
-DUMP_APS = False
-DUMP_ACTCON = False
-DUMP_SYSCON = False
-DUMP_USRCON = False
-LIST_NETS = False
-CONNECT = False
-wanted_net = ""
-MONITOR = False
 LOOP = False
 
 bus = dbus.SystemBus()
@@ -69,6 +61,12 @@ class cNM:
         self.nmi = dbus.Interface(self.nmo, NMI)
         self.nmpi = dbus.Interface(self.nmo, PI)
 
+    def SetWifiEnabled(self, v):
+        self.nmpi.Set(NMI, "WirelessEnabled", v)
+
+    def SetOnline(self, v):
+        self.nmi.Sleep(not v)
+
     def Dump7(self):
         print "State:", self.NM_STATE[self.nmpi.Get(NMI, "State")]
         print "Wifi enabled:", self.nmpi.Get(NMI, "WirelessEnabled")
@@ -90,11 +88,11 @@ class cNM:
 
     def Dump(self):
         self.Dump0()
-        if DUMP_DEVS:
+        if options.dev:
             for device in self.Devices():
                 device.Dump()
 
-        if DUMP_ACTCON:
+        if options.actcon:
             print "Active Connections"
             aconns = self.ActiveConnections()
             for aconn in aconns:
@@ -160,6 +158,7 @@ class cDevice:
     def __init__(self, opath):
         self.opath = opath
         self.devo = bus.get_object(NMC, self.opath)
+        self.devi = dbus.Interface(self.devo, NMI + ".Device")
         self.devpi = dbus.Interface(self.devo, PI)
 
     DEVICE_TYPE = ["UNKNOWN", "802_3_ETHERNET", "802_11_WIRELESS",
@@ -220,7 +219,6 @@ class cDevice:
         "CONFIG", "NEED_AUTH", "IP_CONFIG", "ACTIVATED", "FAILED",]
     
     def Dump7(self):
-        print "Device:"
         # "Ip4Config", only for NM_DEVICE_STATE_ACTIVATED
         for P in ["Udi", "Interface", "Driver",]:
             print "  %s: %s" % (P, self.devpi.Get(NMI, P))
@@ -233,19 +231,44 @@ class cDevice:
         if state == "ACTIVATED":
             self.DumpIp4Config(self.devpi.Get(NMI, "Ip4Config"))
 
+        dt = self.DeviceType()
+        print "  Dev Type:", dt
+        if dt == "802_3_ETHERNET":
+            self.DumpEth()
+        elif dt == "802_11_WIRELESS":
+            self.DumpWifi()
+
     def Dump6(self):
-        print "Device:"
-        print "  Driver:", devi.getDriver()
-        props = devi.getProperties()
-        # TODO: annotate struct
-        for prop in props:
-            print " ", prop
+        print "  Driver:", self.devi.getDriver()
+        props = self.devi.getProperties()
+        print "  Self:", props[0]
+        print "  Interface:", props[1]
+        print "  Type:", self.DEVICE_TYPE[props[2]]
+        print "  UDI:", props[3]
+        print "  ?4:", props[4]
+        print "  ?5:", props[5]
+        print "  IP:", props[6]
+        print "  Mask:", props[7]
+        print "  Bcast:", props[8]
+        print "  MAC:", props[9]
+        print "  GW:", props[10]
+        print "  NS1:", props[11]
+        print "  NS2:", props[12]
+        print "  ?13:", props[13]
+        print "  Strength:", props[14]
+        print "  ?15:", props[15]
+        print "  ?16:", props[16]
+        print "  ?17:", props[17]
+        print "  ?18:", props[18]
+        print "  Current net:", props[19]
+        print "  Seen nets:", " ".join(props[20])
     
     def Dump0(self):
+        print "Device:", self.opath
         try:
             a = self.devi.getDriver()
             self.Dump6()
-        except:
+        except dbus.exceptions.DBusException:
             self.Dump7()
 
     def DumpEth(self):
@@ -266,19 +289,13 @@ class cDevice:
         print "  Wifi Capabilities:", bitmask_str(self.NM_802_11_DEVICE_CAP, wcaps)
         for P in ["HwAddress", "Bitrate", "ActiveAccessPoint"]:
             print "  %s: %s" % (P, self.devpi.Get(NMI, P))
-        if DUMP_APS:
+        if options.ap:
             print "  Access Points"
             for ap in self.APs():
                 ap.Dump()
 
     def Dump(self):
         self.Dump0()
-        dt = self.DeviceType()
-        print "  Dev Type:", dt
-        if dt == "802_3_ETHERNET":
-            self.DumpEth()
-        elif dt == "802_11_WIRELESS":
-            self.DumpWifi()
 
     def ListNets(self):
         if self.IsWifi():
@@ -552,7 +569,8 @@ class ConfigParserKNM:
         self.conmaps_d = {}
         for s in p.sections():
             path = s.split("_")
-            if path[0] != "Connection":
+            #print path
+            if path[0] not in ["Connection", "Notification Messages"]:
                 cid = path[1]
                 self.conmaps_d.setdefault(cid, {})
                 part = path[2]
@@ -649,67 +667,84 @@ class Monitor:
 
 # main
 
-for arg in sys.argv:
-    if arg == "-h" or arg == "--help":
-        HELP = True
-    elif arg == "-d" or arg == "--dev":
-        DUMP_DEVS = True
-    elif arg == "-c" or arg == "--actcon":
-        DUMP_ACTCON = True
-    elif arg == "-u" or arg == "--usrcon":
-        DUMP_USRCON = True
-    elif arg == "-s" or arg == "--syscon":
-        DUMP_SYSCON = True
-    elif arg == "-a" or arg == "--ap":
-        DUMP_APS = True
-        DUMP_DEVS = True # aps are under wifi devs
-    elif arg == "-n" or arg == "--nets":
-        LIST_NETS = True
-    elif arg[:2] == "-C":
-        CONNECT = True
-        wanted_net = arg[2:]
-    elif arg[:10] == "--connect=":
-        CONNECT = True
-        wanted_net = arg[10:]
-    elif arg == "-m" or arg == "--monitor":
-        MONITOR = True
-        LOOP = True
+op = OptionParser(version="%prog " + VERSION)
+op.add_option("-d", "--dev",
+              action="store_true", default=False,
+              help="list devices")
+op.add_option("-c", "--actcon",
+              action="store_true", default=False,
+              help="list active connections")
+op.add_option("-u", "--usrcon",
+              action="store_true", default=False,
+              help="list user connection settings (can CRASH nm-applet)")
+op.add_option("-s", "--syscon",
+              action="store_true", default=False,
+              help="list system connection settings")
+op.add_option("-a", "--ap",
+              action="store_true", default=False,
+              help="list found access points")
+op.add_option("-n", "--nets",
+              action="store_true", default=False,
+              help="list found wireless networks")
+# TODO http://docs.python.org/lib/optparse-adding-new-types.html
+op.add_option("-w", "--wifi",
+              choices=["0","1","off","on","no","yes","false","true"],
+              metavar="BOOL",
+              help="enable or disable wireless")
+op.add_option("-o", "--online",
+              choices=["0","1","off","on","no","yes","false","true"],
+              metavar="BOOL",
+              help="enable or disable network at all")
 
-if HELP:
-    print "Options:"
-    print "  -d, --dev     list devices"
-    print "  -c, --actcon  list active connections"
-    print "  -s, --syscon  list system connection settings"
-    print "  -u, --usrcon  list user connection settings (can CRASH nm-applet)"
-    print "  -a, --ap      list found access points"
-    print "  -n, --nets    list found wireless networks"
-    print "  -C<net>, --connect=<net> connect to a wireless network (using knetworkmanagerrc)"
-    print "  -m, --monitor loop to show dbus signals"
-    sys.exit(0)
+op.add_option("-C", "--connect",
+              help="connect to a wireless network NET (using knetworkmanagerrc)",
+              metavar="NET")
+op.add_option("-m", "--monitor",
+              action="store_true", default=False,
+              help="loop to show dbus signals")
+
+
+(options, args) = op.parse_args()
+
+if options.ap:
+    options.dev = True
+if options.monitor:
+    LOOP = True
+
 
 nmp = '/org/freedesktop/NetworkManager'
 nm = cNM(nmp)
-if DUMP_DEVS or DUMP_ACTCON:
+if options.dev or options.actcon:
     nm.Dump()
 
-if LIST_NETS:
+true_choices =  ["1", "on", "yes", "true"]
+if options.wifi != None:
+    nm.SetWifiEnabled(options.wifi in true_choices)
+if options.online != None:
+    nm.SetOnline(options.online in true_choices)
+
+if options.nets:
     nm.ListNets()
 
-if DUMP_SYSCON:
+if options.syscon:
     print "SYSTEM Connections"
     ss = cApplet(SSC, '/org/freedesktop/NetworkManagerSettings')
     ss.Dump()
 
-if DUMP_USRCON:
+if options.usrcon:
     print "USER Connections"
-    us = cApplet(USC, '/org/freedesktop/NetworkManagerSettings')
-    us.Dump()
-    
+    try:
+        us = cApplet(USC, '/org/freedesktop/NetworkManagerSettings')
+        us.Dump()
+    except dbus.exceptions.DBusException, e:
+        print e
+        if e.get_dbus_name() == "org.freedesktop.DBus.Error.ServiceUnknown":
+            print "Applet is not running"
 
 nmo = bus.get_object(NMC, nmp)
 nmi = dbus.Interface(nmo, NMI)
 
-if CONNECT:
+if options.connect != None:
     brn = bus.request_name(USC, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
     if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
         print "Could not provide settings service, another applet is running"
@@ -744,12 +779,11 @@ def Connect(wanted_net):  # any. or take arg. net is config name or ssid name
 	# TODO run loop, exit it when we have serviced the required calls
         return True
 
-if CONNECT:
-    if Connect(wanted_net):
+if options.connect != None:
+    if Connect(options.connect):
         LOOP = True
-    
 
-if MONITOR:
+if options.monitor:
     m = Monitor()
 
 def loop():
