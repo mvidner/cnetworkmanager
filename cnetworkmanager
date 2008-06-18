@@ -3,7 +3,7 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://www.gnu.org/licenses/gpl-2.0.html or later
 
-VERSION = "0.4"
+VERSION = "0.5"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False
@@ -16,14 +16,14 @@ try:
     import dbus.service
     import _dbus_bindings
 except:
-    print "Install python-1-dbus.rpm"
+    print "Install python-1-dbus.rpm or python-dbus.deb"
     norpm = True
 import xml.dom.minidom
 try:
     import gobject
 except:
     # todo - only if loop wanted
-    print "Install python-gobject2.rpm"
+    print "Install python-gobject2.rpm or python-gobject.deb"
     norpm = True
 # python-gnome.rpm has gconf for nm-applet...
 if norpm:
@@ -61,30 +61,9 @@ class cNM:
         self.nmi = dbus.Interface(self.nmo, NMI)
         self.nmpi = dbus.Interface(self.nmo, PI)
 
-    def SetWifiEnabled(self, v):
-        self.nmpi.Set(NMI, "WirelessEnabled", v)
-
-    def SetOnline(self, v):
-        self.nmi.Sleep(not v)
-
-    def Dump7(self):
-        print "State:", self.NM_STATE[self.nmpi.Get(NMI, "State")]
-        print "Wifi enabled:", self.nmpi.Get(NMI, "WirelessEnabled")
-        print "Wifi HW enabled:", self.nmpi.Get(NMI, "WirelessHardwareEnabled")
-        # self.nmpi.Set(NMI, "WirelessEnabled", True)
-        # self.nmi.Sleep(True)
-
-    def Dump6(self):
-        print "State:", self.NM_STATE[self.nmi.state()]
-
     def Dump0(self):
         "Dumps its own info (not owned objects)."
-
-        try:
-            dummy = self.nmi.getDevices()
-            self.Dump6()
-        except:
-            self.Dump7()
+        pass
 
     def Dump(self):
         self.Dump0()
@@ -98,24 +77,10 @@ class cNM:
             for aconn in aconns:
                 aconn.Dump()
 
-    def Devices(self):
-        try:
-            opaths = self.nmi.getDevices() # 0.6
-        except:
-            opaths = self.nmi.GetDevices()
-        return map(cDevice, opaths)
-
     def ListNets(self):
         print "Wifi Networks:"
         for dev in self.Devices():
             dev.ListNets()
-
-    def ActiveConnections(self):
-        try:
-            aconns = self.nmi.GetActiveConnections() # 0.6
-        except:
-            aconns = self.nmpi.Get(NMI, "ActiveConnections")
-        return map(cActiveConnection, aconns)
 
     def reply_handler(self, opath):
         print "Connected:", opath
@@ -123,7 +88,17 @@ class cNM:
     def err_handler(self, *args):
         print "ERR:", args
 
+    def silent_handler(self, *args):
+        pass
+        print "BOO!:", args
+
+    def quitter_handler(self, *args):
+        # exit the loop that runs only because of us
+        print "padla"
+        sys.exit(0)
+
     def ActivateConnection(self, conn, device, ap):
+        # passing *_handler makes the call asynchronous
         self.nmi.ActivateConnection(USC,
                                     conn.__dbus_object_path__,
                                     device.opath,
@@ -131,6 +106,77 @@ class cNM:
                                     reply_handler=self.reply_handler,
                                     error_handler=self.err_handler,
                                     )
+
+def make_nm(opath):
+    "Detects NM version and chooses appropriate class"
+
+    nmo = bus.get_object(NMC, opath)
+    nmi = dbus.Interface(nmo, NMI)
+    try:
+        dummy = nmi.getDevices()
+        return cNM_06(opath)
+    except dbus.exceptions.DBusException:
+        return cNM_07(opath)
+
+class cNM_06(cNM):
+    def SetWifiEnabled(self, v):
+        # TODO: async call, catch the state signal and exit
+        # weird: synchronous call works, but times out
+        # asynchronous call does not work
+        self.nmi.setWirelessEnabled(v,
+                                    reply_handler=self.quitter_handler,
+                                    error_handler=self.quitter_handler)
+        global LOOP
+        LOOP = True
+
+    def SetOnline(self, v):
+        self.nmi.sleep(not v,
+                                    reply_handler=self.quitter_handler,
+                                    error_handler=self.quitter_handler)
+        global LOOP
+        LOOP = True
+
+    def Dump0(self):
+        print "State:", self.NM_STATE[self.nmi.state()]
+        (we, whe) = self.nmi.getWirelessEnabled()
+        print "Wifi enabled:", bool(we)
+        print "Wifi HW enabled:", bool(whe)
+        try:
+            dup = self.nmi.getDialup()
+        except dbus.exceptions.DBusException, e:
+            if e.get_dbus_name() == "org.freedesktop.NetworkManager.NoDialup":
+                dup = []
+        print "Dialup:", dup
+
+    def Devices(self):
+        opaths = self.nmi.getDevices()
+        return map(cDevice_06, opaths)
+
+    def ActiveConnections(self):
+        return []               # at most one active connection, FIXME find it
+
+
+class cNM_07(cNM):
+    def SetWifiEnabled(self, v):
+        self.nmpi.Set(NMI, "WirelessEnabled", v)
+
+    def SetOnline(self, v):
+        self.nmi.Sleep(not v)
+
+    def Dump0(self):
+        print "State:", self.NM_STATE[self.nmpi.Get(NMI, "State")]
+        print "Wifi enabled:", self.nmpi.Get(NMI, "WirelessEnabled")
+        print "Wifi HW enabled:", self.nmpi.Get(NMI, "WirelessHardwareEnabled")
+
+    def Devices(self):
+        opaths = self.nmi.GetDevices()
+        return map(cDevice_07, opaths)
+
+    def ActiveConnections(self):
+        aconns = self.nmpi.Get(NMI, "ActiveConnections")
+        return map(cActiveConnection, aconns)
+
+
 
 class cActiveConnection:
     def __init__(self, opath):
@@ -149,8 +195,8 @@ class cActiveConnection:
    
 def bitmask_str(map, value):
     ret = []
-    for mask, s in map.iteritems():
-        if value & mask: ret.append(s)
+    for mask in sorted(map.keys()):
+        if value & mask: ret.append(map[mask])
     return ",".join(ret)
 
 
@@ -160,22 +206,14 @@ class cDevice:
         self.devo = bus.get_object(NMC, self.opath)
         self.devi = dbus.Interface(self.devo, NMI + ".Device")
         self.devpi = dbus.Interface(self.devo, PI)
+        self.dt = None
+        self.DeviceType0()
 
     DEVICE_TYPE = ["UNKNOWN", "802_3_ETHERNET", "802_11_WIRELESS",
                    "GSM", "CDMA",]
 
     def DeviceType(self):
-        return self.DEVICE_TYPE[self.devpi.Get(NMI, "DeviceType")]
-
-    def IsWifi(self):
-        return self.DeviceType() == "802_11_WIRELESS"
-
-    def APs(self):
-        "Only for wifi"
-
-        self.wdevi = dbus.Interface(self.devo, NMI + ".Device.Wireless")
-        aps = self.wdevi.GetAccessPoints()
-        return map(cAP, aps)
+        return self.DEVICE_TYPE[self.DeviceType0()]
 
     def ip_str(self, i32):
         ret = []
@@ -212,13 +250,124 @@ class cDevice:
         niss = pi.Get(NMI, "NisServers")
         print "    NisServers:", " ".join(map(self.ip_str, niss))
 
-    NM_DEVICE_CAP = {1: "NM_SUPPORTED", 2: "CARRIER_DETECT",}
+    NM_DEVICE_CAP = {1: "NM_SUPPORTED", 2: "CARRIER_DETECT", 4: "SCANNING", }
+
+    
+    def Dump(self):
+        print "Device:", self.opath
+
+
+    IW_MODE = ["AUTO", "ADHOC", "INFRA", "MASTER",
+               "REPEAT", "SECOND", "MONITOR",]
+
+    def ListNets(self):
+            for ap in self.APs():
+                ap.ListNets()
+
+# mixin
+class cDeviceEth:
+    def APs(self):
+        return []
+
+class cDevice_06(cDevice):
+    def DeviceType0(self):
+        if self.dt is None:
+            self.dt = self.devi.getProperties()[2]
+            if self.dt == 1:
+                self.__class__ = cDeviceEth_06
+            elif self.dt == 2:
+                self.__class__ = cDeviceWifi_06
+        return self.dt
+
+    NM_ACT_STAGE = [
+        "UNKNOWN", "DEVICE_PREPARE", "DEVICE_CONFIG", "NEED_USER_KEY",
+        "IP_CONFIG_START", "IP_CONFIG_GET", "IP_CONFIG_COMMIT",
+        "ACTIVATED", "FAILED", "CANCELLED", ]
+
+    def Dump(self):
+        cDevice.Dump(self)
+        print "  Driver:", self.devi.getDriver()
+        props = self.devi.getProperties() # osusb ussss sssii biuus as
+        print "  Self:", props[0]         # o
+        print "  Interface:", props[1]    # s
+        print "  Type:", self.DEVICE_TYPE[props[2]] # u
+        print "  UDI:", props[3]                    # s
+        print "  Active:", bool(props[4])           # b
+        print "  Activation Stage:", self.NM_ACT_STAGE[props[5]] # u
+        print "  IP:", props[6]                     # s
+        print "  Mask:", props[7]                   # s
+        print "  Bcast:", props[8]                  # s
+        print "  HwAddress:", props[9]              # s
+        print "  GW:", props[10]                    # s
+        print "  NS1:", props[11]                   # s
+        print "  NS2:", props[12]                   # s
+        self.DumpMore()
+
+class cDeviceEth_06(cDevice_06, cDeviceEth):
+    def DumpMore(self):
+        props = self.devi.getProperties() # osusb ussss sssii biuus as
+        print "  Link Active:", bool(props[15])     # b
+        print "  Speed:", props[16]                 # i
+        print "  Generic Capabilities:", bitmask_str(self.NM_DEVICE_CAP, props[17])  # u
+
+class cDeviceWifi_06(cDevice_06):
+    NM_802_11_CAP = {
+	0x00000001: "PROTO_NONE",
+	0x00000002: "PROTO_WEP",
+	0x00000004: "PROTO_WPA",
+	0x00000008: "PROTO_WPA2",
+	0x00000010: "RESERVED1",
+	0x00000020: "RESERVED2",
+	0x00000040: "KEY_MGMT_PSK",
+	0x00000080: "KEY_MGMT_802_1X",
+	0x00000100: "RESERVED3",
+	0x00000200: "RESERVED4",
+	0x00000400: "RESERVED5",
+	0x00000800: "RESERVED6",
+	0x00001000: "CIPHER_WEP40",
+	0x00002000: "CIPHER_WEP104",
+	0x00004000: "CIPHER_TKIP",
+	0x00008000: "CIPHER_CCMP",
+        }
+
+    def APs(self):
+        self.wdevi = dbus.Interface(self.devo, NMI + ".Device.Wireless")
+        aps = self.devi.getProperties()[20]
+        return map(cAP_06, aps)
+
+    def DumpMore(self):
+        props = self.devi.getProperties() # osusb ussss sssii biuus as
+        print "  Mode:", self.IW_MODE[props[13]]    # i
+        print "  Strength:", props[14]              # i
+        print "  Link Active:", bool(props[15])     # b
+        print "  Speed:", props[16]                 # i
+        print "  Generic Capabilities:", bitmask_str(self.NM_DEVICE_CAP, props[17])  # u
+        print "  Capabilities:", bitmask_str(self.NM_802_11_CAP, props[18]) # u
+        print "  Current net:", props[19]           # s
+        nets = props[20]                            # as
+        print "  Seen nets:", " ".join(nets)
+        if options.ap:
+            print "  Access Points"
+            for ap in self.APs():
+                ap.Dump()
+
+class cDevice_07(cDevice):
+    def DeviceType0(self):
+        if self.dt is None:
+            self.dt = self.devpi.Get(NMI, "DeviceType")
+            if self.dt == 1:
+                self.__class__ = cDeviceEth_07
+            elif self.dt == 2:
+                self.__class__ = cDeviceWifi_07
+        return self.dt
 
     NM_DEVICE_STATE = [
         "UNKNOWN", "UNMANAGED", "UNAVAILABLE", "DISCONNECTED", "PREPARE",
         "CONFIG", "NEED_AUTH", "IP_CONFIG", "ACTIVATED", "FAILED",]
-    
-    def Dump7(self):
+
+    def Dump(self):
+        cDevice.Dump(self)
+
         # "Ip4Config", only for NM_DEVICE_STATE_ACTIVATED
         for P in ["Udi", "Interface", "Driver",]:
             print "  %s: %s" % (P, self.devpi.Get(NMI, P))
@@ -233,57 +382,24 @@ class cDevice:
 
         dt = self.DeviceType()
         print "  Dev Type:", dt
-        if dt == "802_3_ETHERNET":
-            self.DumpEth()
-        elif dt == "802_11_WIRELESS":
-            self.DumpWifi()
+        self.DumpMore()
 
-    def Dump6(self):
-        print "  Driver:", self.devi.getDriver()
-        props = self.devi.getProperties()
-        print "  Self:", props[0]
-        print "  Interface:", props[1]
-        print "  Type:", self.DEVICE_TYPE[props[2]]
-        print "  UDI:", props[3]
-        print "  ?4:", props[4]
-        print "  ?5:", props[5]
-        print "  IP:", props[6]
-        print "  Mask:", props[7]
-        print "  Bcast:", props[8]
-        print "  MAC:", props[9]
-        print "  GW:", props[10]
-        print "  NS1:", props[11]
-        print "  NS2:", props[12]
-        print "  ?13:", props[13]
-        print "  Strength:", props[14]
-        print "  ?15:", props[15]
-        print "  ?16:", props[16]
-        print "  ?17:", props[17]
-        print "  ?18:", props[18]
-        print "  Current net:", props[19]
-        print "  Seen nets:", " ".join(props[20])
-    
-    def Dump0(self):
-        print "Device:", self.opath
-        try:
-            a = self.devi.getDriver()
-            self.Dump6()
-        except dbus.exceptions.DBusException:
-            self.Dump7()
-
-    def DumpEth(self):
+class cDeviceEth_07(cDevice_07, cDeviceEth):
+    def DumpMore(self):
         for P in ["HwAddress", "Speed", "Carrier"]:
             print "  %s: %s" % (P, self.devpi.Get(NMI, P))
 
-
-    IW_MODE = ["AUTO", "ADHOC", "INFRA", "MASTER",
-               "REPEAT", "SECOND", "MONITOR",]
-
+class cDeviceWifi_07(cDevice_07):
     NM_802_11_DEVICE_CAP = {1:"CIPHER_WEP40", 2:"CIPHER_WEP104",
                             4:"CIPHER_TKIP", 8:"CIPHER_CCMP",
                             16:"WPA", 32:"RSN",}
 
-    def DumpWifi(self):
+    def APs(self):
+        self.wdevi = dbus.Interface(self.devo, NMI + ".Device.Wireless")
+        aps = self.wdevi.GetAccessPoints()
+        return map(cAP_07, aps)
+
+    def DumpMore(self):
         print "  Dev Mode:", self.IW_MODE[self.devpi.Get(NMI, "Mode")]
         wcaps = self.devpi.Get(NMI, "WirelessCapabilities")
         print "  Wifi Capabilities:", bitmask_str(self.NM_802_11_DEVICE_CAP, wcaps)
@@ -293,21 +409,93 @@ class cDevice:
             print "  Access Points"
             for ap in self.APs():
                 ap.Dump()
-
-    def Dump(self):
-        self.Dump0()
-
-    def ListNets(self):
-        if self.IsWifi():
-            for ap in self.APs():
-                ap.ListNets()
-
+    
 """An AP found around us"""
 class cAP:
     def __init__(self, opath):
         self.opath = opath
         self.apo = bus.get_object(NMC, self.opath)
         self.appi = dbus.Interface(self.apo, PI)
+        # for _06
+        self.devi = dbus.Interface(self.apo, NMI + ".Devices")
+
+    NM_802_11_AP_FLAGS = {1: "PRIVACY",}
+
+    NM_802_11_AP_SEC = {
+        1: "PAIR_WEP40", 2: "PAIR_WEP104", 4: "PAIR_TKIP", 8: "PAIR_CCMP",
+        16: "GROUP_WEP40", 32: "GROUP_WEP104", 64: "GROUP_TKIP",
+        128: "GROUP_CCMP", 256: "KEY_MGMT_PSK", 512: "KEY_MGMT_802_1X",}
+
+    def ListNets(self, marker = " "):
+        # TODO *mark current
+        mbr = self.Mbr() / 1024 # 07 1000, 06 1024?
+        priv_s = self.PrivS()
+        print "%s%3d: %s (%dMb%s)" % (marker, self.Strength(), self.Ssid(), mbr, priv_s)
+
+class cAP_06(cAP):
+    def Mbr(self, props=None):
+        if props is None:
+            props = self.devi.getProperties()
+        return props[5]
+
+    
+    def PrivS(self):
+        props = self.devi.getProperties()
+        caps_s = bitmask_str(cDeviceWifi_06.NM_802_11_CAP, props[7]) + ","
+        priv_s = ""
+        if caps_s.find("PROTO_WEP,") != -1:
+            priv_s += " WEP"
+        if caps_s.find("PROTO_WPA,") != -1:
+            priv_s += " WPA"
+        if caps_s.find("PROTO_WPA2,") != -1:
+            priv_s += " WPA2"
+        if caps_s.find("KEY_MGMT_802_1X,") != -1:
+            priv_s += " Enterprise"
+        return priv_s
+
+    def Strength(self, props=None):
+        if props is None:
+            props = self.devi.getProperties()
+        return props[3]
+
+    def Ssid(self, props=None):
+        if props is None:
+            props = self.devi.getProperties()
+        return props[1]
+
+
+    def Dump(self):
+        props = self.devi.getProperties() # ossid iiib
+        print "   Self:", props[0]
+        print "    Ssid:", self.Ssid(props)
+        print "    HwAddress:", props[2]
+        print "    Strength:", self.Strength(props)
+        print "    Frequency:", props[4]
+        print "    MaxBitrate:", self.Mbr(props)
+        print "    AP Mode:", cDevice.IW_MODE[props[6]]
+        print "    Capabilities:", bitmask_str(cDeviceWifi_06.NM_802_11_CAP, props[7])
+        print "    Broadcast:", props[8]
+        
+class cAP_07(cAP):
+    def Mbr(self):
+        return self.appi.Get(NMI, "MaxBitrate")
+
+    def PrivS(self):
+        priv = self.appi.Get(NMI, "Flags") != 0
+        wpa = self.appi.Get(NMI, "WpaFlags") != 0
+        wpa2 = self.appi.Get(NMI, "RsnFlags") != 0
+        priv_s = ""
+        if priv:
+            if not wpa and not wpa2:
+                priv_s = priv_s + " WEP"
+            if wpa:
+                priv_s = priv_s + " WPA"
+            if wpa2:
+                priv_s = priv_s + " WPA2"
+        return priv_s
+
+    def Strength(self):
+        return int(self.appi.Get(NMI, "Strength"))
 
     def ssid_str(noself, array):
         s = ""
@@ -317,16 +505,6 @@ class cAP:
 
     def Ssid(self):
         return self.ssid_str(self.appi.Get(NMI, "Ssid"))
-
-    def Strength(self):
-        return int(self.appi.Get(NMI, "Strength"))
-
-    NM_802_11_AP_FLAGS = {1: "PRIVACY",}
-
-    NM_802_11_AP_SEC = {
-        1: "PAIR_WEP40", 2: "PAIR_WEP104", 4: "PAIR_TKIP", 8: "PAIR_CCMP",
-        16: "GROUP_WEP40", 32: "GROUP_WEP104", 64: "GROUP_TKIP",
-        128: "GROUP_CCMP", 256: "KEY_MGMT_PSK", 512: "KEY_MGMT_802_1X",}
 
     def Dump(self):
         print "  AP:", self.opath
@@ -342,22 +520,7 @@ class cAP:
         print "    AP RSN Flags:", bitmask_str(self.NM_802_11_AP_SEC,
                                                self.appi.Get(NMI, "RsnFlags"))
     
-    def ListNets(self):
-        mbr = self.appi.Get(NMI, "MaxBitrate") / 1000
-        priv = self.appi.Get(NMI, "Flags") != 0
-        wpa = self.appi.Get(NMI, "WpaFlags") != 0
-        wpa2 = self.appi.Get(NMI, "RsnFlags") != 0
-        priv_s = ""
-        if priv:
-            if not wpa and not wpa2:
-                priv_s = priv_s + " WEP"
-            if wpa:
-                priv_s = priv_s + " WPA"
-            if wpa2:
-                priv_s = priv_s + " WPA2"
-        print "%3d: %s (%dMb%s)" % (self.Strength(), self.Ssid(), mbr, priv_s)
-
-# Settings is overloaded
+# this is the client side of the applet; see also UserSettings
 class cApplet:
     def __init__(self, svc, opath):
         self.svc = svc
@@ -503,6 +666,39 @@ hardwired_conmaps = [
             },
         },
     ]
+
+class UserSettings_06:
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="i", out_signature='as')
+    def getNetworks(self, i):
+        return ["frogs"]        # FIXME
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="", out_signature='ao') # out??
+    def getVpnConnections(self):
+        return []               # FIXME
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="si", out_signature='sibasisi')
+    # or additional i ???
+    def getNetworkProperties(self, net, i):
+        # essid, timestamp, ?, bssids, we_cipher, ?, ...
+        # we_cipher=16: i wep_auth_algorithm
+        # we_cipher=0:  i wpa_psk_key_mgt, i wpa_psk_wpa_version
+        return ("frogs", 1213713468, 0, ['00:13:10:06:E3:77'], 16, "", 1)
+        return []               # FIXME
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="oosib", out_signature="isi")
+    def getKeyForNetwork(self, dev, net, ssid, i, b):
+        return (16, "66666666666666666666666666",1) # FIXME
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="sbsisi", out_signature='')
+    def updateNetworkInfo(self, ssid, b, ap, i1, secret, i2):
+        pass
+
+
 
 # server analog of cApplet
 class UserSettings(dbus.service.Object):
@@ -723,7 +919,7 @@ if options.monitor:
 
 
 nmp = '/org/freedesktop/NetworkManager'
-nm = cNM(nmp)
+nm = make_nm(nmp)
 if options.dev or options.actcon:
     nm.Dump()
 
@@ -754,6 +950,7 @@ if options.usrcon:
 nmo = bus.get_object(NMC, nmp)
 nmi = dbus.Interface(nmo, NMI)
 
+# TODO UserSettings_06
 if options.connect != None:
     brn = bus.request_name(USC, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
     if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
@@ -771,7 +968,6 @@ def Connect(wanted_net):  # any. or take arg. net is config name or ssid name
     #print "Connection wanted to", wanted_net
     found_con = found_ap = found_dev = None
     for dev in nm.Devices():
-      if dev.IsWifi():
 	for ap in dev.APs():
 	    if wanted_net == ap.Ssid():
 		found_ap = ap

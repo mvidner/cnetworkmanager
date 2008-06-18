@@ -1,3 +1,8 @@
+0.5, Wed 2008-06-18
+New: works much better with NM 0.6, except -C, -u, -s.
+Fix: flag values are sorted now
+Fix: suggest also .debs if python modules are missing.
+
 0.4, Mon 2008-06-09
 New: changed license to GPLv2 or later, to match other parts of NM
 New: distinguish WEP, WPA, WPA2 for -n.
