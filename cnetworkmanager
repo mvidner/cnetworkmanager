@@ -3,7 +3,7 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://www.gnu.org/licenses/gpl-2.0.html or later
 
-VERSION = "0.5"
+VERSION = "0.5.1"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False
@@ -776,7 +776,7 @@ class ConfigParserKNM:
         for s in p.sections():
             path = s.split("_")
             #print path
-            if path[0] not in ["Connection", "Notification Messages"]:
+            if path[0] in ["ConnectionSetting", "ConnectionSecrets"]:
                 cid = path[1]
                 self.conmaps_d.setdefault(cid, {})
                 part = path[2]
