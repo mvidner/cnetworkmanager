@@ -1,3 +1,6 @@
+0.6, Thu 2008-06-19
+New: first steps to make it work on OLPC
+
 0.5, Wed 2008-06-18
 New: works much better with NM 0.6, except -C, -u, -s.
 Fix: flag values are sorted now

@@ -3,7 +3,7 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://www.gnu.org/licenses/gpl-2.0.html or later
 
-VERSION = "0.5.1"
+VERSION = "0.6"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False
@@ -16,14 +16,14 @@ try:
     import dbus.service
     import _dbus_bindings
 except:
-    print "Install python-1-dbus.rpm or python-dbus.deb"
+    print "Install python-1-dbus.rpm or or python-dbus.rpm or python-dbus.deb"
     norpm = True
 import xml.dom.minidom
 try:
     import gobject
 except:
     # todo - only if loop wanted
-    print "Install python-gobject2.rpm or python-gobject.deb"
+    print "Install python-gobject2.rpm or pygobject2.rpm or python-gobject.deb"
     norpm = True
 # python-gnome.rpm has gconf for nm-applet...
 if norpm:
@@ -138,15 +138,21 @@ class cNM_06(cNM):
 
     def Dump0(self):
         print "State:", self.NM_STATE[self.nmi.state()]
-        (we, whe) = self.nmi.getWirelessEnabled()
-        print "Wifi enabled:", bool(we)
-        print "Wifi HW enabled:", bool(whe)
+        we = self.nmi.getWirelessEnabled()
+        if isinstance(we, tuple):
+            print "Wifi enabled:", bool(we[0])
+            print "Wifi HW enabled:", bool(we[1])
+        else:
+            print "Wifi enabled:", bool(we)
+        
         try:
             dup = self.nmi.getDialup()
+            print "Dialup:", dup
         except dbus.exceptions.DBusException, e:
-            if e.get_dbus_name() == "org.freedesktop.NetworkManager.NoDialup":
-                dup = []
-        print "Dialup:", dup
+            #if e.get_dbus_name() == "org.freedesktop.NetworkManager.NoDialup":
+            #    pass
+            #else:
+            print e
 
     def Devices(self):
         opaths = self.nmi.getDevices()
@@ -210,7 +216,7 @@ class cDevice:
         self.DeviceType0()
 
     DEVICE_TYPE = ["UNKNOWN", "802_3_ETHERNET", "802_11_WIRELESS",
-                   "GSM", "CDMA",]
+                   "GSM", "CDMA",] #OLPC: 3 is MESH
 
     def DeviceType(self):
         return self.DEVICE_TYPE[self.DeviceType0()]
@@ -260,14 +266,16 @@ class cDevice:
     IW_MODE = ["AUTO", "ADHOC", "INFRA", "MASTER",
                "REPEAT", "SECOND", "MONITOR",]
 
+    def APs(self):
+        return []
+
     def ListNets(self):
             for ap in self.APs():
                 ap.ListNets()
 
 # mixin
 class cDeviceEth:
-    def APs(self):
-        return []
+    pass
 
 class cDevice_06(cDevice):
     def DeviceType0(self):
@@ -302,6 +310,9 @@ class cDevice_06(cDevice):
         print "  NS1:", props[11]                   # s
         print "  NS2:", props[12]                   # s
         self.DumpMore()
+
+    def DumpMore(self):
+	print "  (unknown device type, not dumping more)"
 
 class cDeviceEth_06(cDevice_06, cDeviceEth):
     def DumpMore(self):
@@ -919,7 +930,12 @@ if options.monitor:
 
 
 nmp = '/org/freedesktop/NetworkManager'
-nm = make_nm(nmp)
+try:
+    nm = make_nm(nmp)
+except dbus.exceptions.DBusException, e:
+    print e
+    print "NetworkManager is not running"
+    sys.exit(1)
 if options.dev or options.actcon:
     nm.Dump()
 
@@ -944,8 +960,8 @@ if options.usrcon:
         us.Dump()
     except dbus.exceptions.DBusException, e:
         print e
-        if e.get_dbus_name() == "org.freedesktop.DBus.Error.ServiceUnknown":
-            print "Applet is not running"
+        #if e.get_dbus_name() == "org.freedesktop.DBus.Error.ServiceUnknown":
+        print "Applet is not running"
 
 nmo = bus.get_object(NMC, nmp)
 nmi = dbus.Interface(nmo, NMI)
