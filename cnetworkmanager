@@ -3,7 +3,7 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://www.gnu.org/licenses/gpl-2.0.html or later
 
-VERSION = "0.7"
+VERSION = "0.7.1"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False
@@ -644,7 +644,7 @@ class cConnection:
 
     def Dump(self):
        print "Conn:", self.opath
-       print " Id:", self.ci.ID()
+       print " Id:", self.ci.GetID()
        settings = self.Settings()
        settings.Dump()
 
