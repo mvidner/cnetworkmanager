@@ -1,3 +1,9 @@
+0.7, Sat 2008-07-12
+New: can connect and show settings with NM 0.6
+New: keys can be specified as CLI options, knetwormanagerrc not needed
+New: -C foo is enough to connect to an unencrypted network
+Fix: -o1 works for NM 0.6
+
 0.6, Thu 2008-06-19
 New: first steps to make it work on OLPC
 

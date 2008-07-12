@@ -3,12 +3,15 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://www.gnu.org/licenses/gpl-2.0.html or later
 
-VERSION = "0.6"
+VERSION = "0.7"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False
 import sys
 import os
+import string
+import re
+import time
 import ConfigParser             # knm config
 from optparse import OptionParser
 try:
@@ -46,6 +49,7 @@ NMI = NMC
 PI = 'org.freedesktop.DBus.Properties'
 SSC = "org.freedesktop.NetworkManagerSystemSettings"
 USC = "org.freedesktop.NetworkManagerUserSettings"
+NMIC = "org.freedesktop.NetworkManagerInfo"
 
 def introspect(obj):
     ii = dbus.Interface(obj, 'org.freedesktop.DBus.Introspectable')
@@ -60,6 +64,9 @@ class cNM:
         self.nmo = bus.get_object(NMC, self.opath)
         self.nmi = dbus.Interface(self.nmo, NMI)
         self.nmpi = dbus.Interface(self.nmo, PI)
+
+    def Api(self):
+        return "common"
 
     def Dump0(self):
         "Dumps its own info (not owned objects)."
@@ -97,15 +104,6 @@ class cNM:
         print "padla"
         sys.exit(0)
 
-    def ActivateConnection(self, conn, device, ap):
-        # passing *_handler makes the call asynchronous
-        self.nmi.ActivateConnection(USC,
-                                    conn.__dbus_object_path__,
-                                    device.opath,
-                                    ap.opath,
-                                    reply_handler=self.reply_handler,
-                                    error_handler=self.err_handler,
-                                    )
 
 def make_nm(opath):
     "Detects NM version and chooses appropriate class"
@@ -119,6 +117,9 @@ def make_nm(opath):
         return cNM_07(opath)
 
 class cNM_06(cNM):
+    def Api(self):
+        return "06"
+
     def SetWifiEnabled(self, v):
         # TODO: async call, catch the state signal and exit
         # weird: synchronous call works, but times out
@@ -130,7 +131,12 @@ class cNM_06(cNM):
         LOOP = True
 
     def SetOnline(self, v):
-        self.nmi.sleep(not v,
+        if v:
+            self.nmi.wake(True,
+                                    reply_handler=self.quitter_handler,
+                                    error_handler=self.quitter_handler)
+        else:
+            self.nmi.sleep(True,
                                     reply_handler=self.quitter_handler,
                                     error_handler=self.quitter_handler)
         global LOOP
@@ -161,8 +167,23 @@ class cNM_06(cNM):
     def ActiveConnections(self):
         return []               # at most one active connection, FIXME find it
 
+    def reply_handler(self):
+        print "Connection requested"
+
+    def err_handler(self, *args):
+        print "ERR:", args
+
+    def ActivateConnection(self, conn, device, ap):
+        # passing *_handler makes the call asynchronous
+        self.nmi.setActiveDevice(device.opath, ssid_str(conn.Ssid()),
+                                    reply_handler=self.reply_handler,
+                                    error_handler=self.err_handler,
+                                    )
 
 class cNM_07(cNM):
+    def Api(self):
+        return "07"
+
     def SetWifiEnabled(self, v):
         self.nmpi.Set(NMI, "WirelessEnabled", v)
 
@@ -182,6 +203,15 @@ class cNM_07(cNM):
         aconns = self.nmpi.Get(NMI, "ActiveConnections")
         return map(cActiveConnection, aconns)
 
+    def ActivateConnection(self, conn, device, ap):
+        # passing *_handler makes the call asynchronous
+        self.nmi.ActivateConnection(USC,
+                                    conn.__dbus_object_path__,
+                                    device.opath,
+                                    ap.opath,
+                                    reply_handler=self.reply_handler,
+                                    error_handler=self.err_handler,
+                                    )
 
 
 class cActiveConnection:
@@ -487,6 +517,34 @@ class cAP_06(cAP):
         print "    Capabilities:", bitmask_str(cDeviceWifi_06.NM_802_11_CAP, props[7])
         print "    Broadcast:", props[8]
         
+def ssid_str(array):
+    s = ""
+    for b in array:
+        s = s + ("%c" % b)
+    return s
+
+def opath_validchar(c):
+    # _ is also escaped even though it is valid
+    return \
+        string.ascii_letters.find(c) != -1 or \
+        string.digits.find(c) != -1
+
+def opath_escape(s):
+    r = ""
+    for c in s:
+        # TODO find a more elegant way
+        if not opath_validchar(c):
+            # "-" -> "_2d_"
+            c = "_%2x_" % ord(c)
+        r = r + c
+    return r
+
+def opath_unescape(s):
+    # "2d" -> "-"
+    unhex = lambda xx: chr(eval("0x"+xx))
+    # all "_2d_" -> "-"
+    return re.sub("_.._", lambda p: unhex(p.group()[1:3]), s)
+
 class cAP_07(cAP):
     def Mbr(self):
         return self.appi.Get(NMI, "MaxBitrate")
@@ -508,14 +566,8 @@ class cAP_07(cAP):
     def Strength(self):
         return int(self.appi.Get(NMI, "Strength"))
 
-    def ssid_str(noself, array):
-        s = ""
-        for b in array:
-            s = s + ("%c" % b)
-        return s
-
     def Ssid(self):
-        return self.ssid_str(self.appi.Get(NMI, "Ssid"))
+        return ssid_str(self.appi.Get(NMI, "Ssid"))
 
     def Dump(self):
         print "  AP:", self.opath
@@ -564,6 +616,25 @@ class cApplet:
         opaths = self.si.ListConnections()
         return map(self.myConnection, opaths)
 
+NETWORK_TYPE_ALLOWED = 1
+class cApplet_06(cApplet):
+    def __init__(self, svc, opath):
+        self.svc = svc
+        self.opath = opath
+        self.io = bus.get_object(self.svc, self.opath)
+        self.ii = dbus.Interface(self.io, 'org.freedesktop.NetworkManagerInfo')
+
+    def isSystem(self):
+        return False;
+
+    def myConnection(self, opath):
+        return cConnection_06(self, opath)
+
+    # TODO also VPN conns
+    def Connections(self):
+        names = self.ii.getNetworks(NETWORK_TYPE_ALLOWED)
+        return map(self.myConnection, names)
+
 class cConnection:
     def __init__(self, svc, opath):
         self.svc = svc
@@ -573,7 +644,7 @@ class cConnection:
 
     def Dump(self):
        print "Conn:", self.opath
-       print " Id:", self.ci.GetID()
+       print " Id:", self.ci.ID()
        settings = self.Settings()
        settings.Dump()
 
@@ -588,16 +659,123 @@ class cConnection:
     def Settings(self):
         return cSettings(self.ci.GetSettings())
 
+def dump_time(unixtime):
+    return time.asctime(time.localtime(unixtime))
+
+class cConnection_06:
+    def __init__(self, applet, id):
+        self.id = id
+        self.applet = applet
+
+    def Dump(self):
+        print "Conn:", self.id
+
+        np = self.applet.ii.getNetworkProperties(self.id, NETWORK_TYPE_ALLOWED)
+        ssid = np[0]
+        print " ssid:", ssid
+        print " time:", dump_time(np[1])
+        print " trusted:", bool(np[2])
+        print " bssids:", ", ".join(np[3])
+        enctype = np[4]
+        print " we_cipher:", enctype
+        if enctype != 1:
+            print " secret:", np[5]
+        if enctype == 16:
+            print " wep_auth_algorithm:", np[6]
+        elif enctype == 0:
+            print " wpa_psk_key_mgt:", np[6]
+            print " wpa_psk_wpa_version:", np[7]
+
+        return # nm-applet will not tell kfn anyway
+        devp = "/org/freedesktop/NetworkManager/Devices/ath0" #FIXME
+        netp = devp + "/Networks/" + opath_escape(self.id)
+        attempt = 1
+        newkey = False
+        kfn = self.applet.ii.getKeyForNetwork(devp, netp, ssid, attempt, newkey)
+        print " kfn:", kfn
+
+
+# 06
+NM_AUTH_TYPE_WPA_PSK_AUTO = 0x00000000
+NM_AUTH_TYPE_NONE         = 0x00000001
+NM_AUTH_TYPE_WEP40        = 0x00000002
+NM_AUTH_TYPE_WPA_PSK_TKIP = 0x00000004
+NM_AUTH_TYPE_WPA_PSK_CCMP = 0x00000008
+NM_AUTH_TYPE_WEP104       = 0x00000010
+NM_AUTH_TYPE_WPA_EAP      = 0x00000020
+NM_AUTH_TYPE_LEAP         = 0x00000040
+
+IW_AUTH_ALG_OPEN_SYSTEM   = 0x00000001
+IW_AUTH_ALG_SHARED_KEY    = 0x00000002
+IW_AUTH_ALG_LEAP          = 0x00000004
 
 class cSettings:
     def __init__(self, conmap):
+        #print "INIT", conmap
         self.conmap = conmap
 
     def Type(self):
         return self.conmap["connection"]["type"]
 
-    def GetID(self):
+    def ID(self):
         return self.conmap["connection"]["id"]
+
+    def Ssid(self):
+        s = self.conmap["802-11-wireless"]["ssid"]
+        #print s
+        return s
+
+    def Timestamp(self):
+        try:
+            return self.conmap["connection"]["timestamp"]
+        except KeyError:
+            return 0
+
+    def Trusted(self):
+        # false by default
+        return False
+
+    def SeenBssids(self):
+        try:
+            return self.conmap["802-11-wireless"]["seen-bssids"]
+        except KeyError:
+            return []
+
+    # for 06
+    def WeCipher(self):
+        k = self.Key()
+        if len(k) == 26:
+            return NM_AUTH_TYPE_WEP104
+        elif len(k) == 64:
+            return NM_AUTH_TYPE_WPA_PSK_AUTO
+        elif len(k) == 0:
+            return NM_AUTH_TYPE_NONE
+        print "Defaulting cipher type to none"
+        return NM_AUTH_TYPE_NONE
+
+    def Key(self):
+        try:
+            return self.conmap["802-11-wireless-security"]["psk"]
+        except KeyError:
+            pass
+        try:
+            return self.conmap["802-11-wireless-security"]["wep-key0"]
+        except KeyError:
+            pass
+        # no key
+        return ""
+
+    def WepAuthAlgorithm(self):
+        print "FIXME Defaulting WEP auth alg to open"
+        return IW_AUTH_ALG_OPEN_SYSTEM
+
+    def PskKeyMgt(self):
+        print "FIXME Defaulting PSK key mgmt to 2"
+        return 2
+
+    def PskWpaVersion(self):
+        print "FIXME Defaulting WPA version to 2"
+        return 2
 
     def Security(self):
         try:
@@ -606,8 +784,7 @@ class cSettings:
             return ""
 
     def isNet(self, net_name):
-        # FIXME also ssid ...
-        return self.GetID() == net_name
+        return self.ID() == net_name or self.Ssid() == net_name
 
     # FIXME check spec/NM what to censor
     secrets = dict.fromkeys(["wep-key0", "psk"])
@@ -640,75 +817,35 @@ class cSettings:
             for n2, v2 in v1.iteritems():        
                 print "   %s: %s" % (n2, v2)
 
-# just an example, unused  now
-hardwired_conmaps = [
-    {
-        "connection": {
-            "id": "onenet",
-            "type": "802-11-wireless",
-            },
-        "802-11-wireless": {
-            "ssid": dbus.ByteArray("onenet"),
-            "mode": "infrastructure",
-            "security": "802-11-wireless-security",
-            },
-        #  ipv4
-        #   method: dhcp
-        "802-11-wireless-security": {
-            "key-mgmt": "wpa-psk",
-            "wep-tx-keyidx": 0,
-            "psk": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", # CENSORED
-            },
-        },
-    {
+def mkconmap_wifi(ssid):
+    return {
         'connection': {
-            'id': 'frogs',
+            'id': '_cnm_handcrafted_',
             'type': '802-11-wireless',
             },
         '802-11-wireless': {
-            'ssid': dbus.ByteArray('frogs'),
+            'ssid': dbus.ByteArray(ssid),
             'mode': 'infrastructure',
             'security': '802-11-wireless-security',
             },
         '802-11-wireless-security': {
             'key-mgmt': 'none',
-            'wep-tx-keyidx': 0,
-            'wep-key0': 'aaaaaaaaaaaaaaaaaaaaaaaaaa', # CENSORED
             },
-        },
-    ]
+        }
 
-class UserSettings_06:
-    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
-                         in_signature="i", out_signature='as')
-    def getNetworks(self, i):
-        return ["frogs"]        # FIXME
+def mkconmap_wep(ssid, key):
+    cm = mkconmap_wifi(ssid)
+    cm["802-11-wireless-security"]["key-mgmt"] = "none"
+    cm["802-11-wireless-security"]["wep-tx-keyidx"] = 0
+    cm["802-11-wireless-security"]["wep-key0"] = key
+    return cm
 
-    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
-                         in_signature="", out_signature='ao') # out??
-    def getVpnConnections(self):
-        return []               # FIXME
-
-    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
-                         in_signature="si", out_signature='sibasisi')
-    # or additional i ???
-    def getNetworkProperties(self, net, i):
-        # essid, timestamp, ?, bssids, we_cipher, ?, ...
-        # we_cipher=16: i wep_auth_algorithm
-        # we_cipher=0:  i wpa_psk_key_mgt, i wpa_psk_wpa_version
-        return ("frogs", 1213713468, 0, ['00:13:10:06:E3:77'], 16, "", 1)
-        return []               # FIXME
-
-    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
-                         in_signature="oosib", out_signature="isi")
-    def getKeyForNetwork(self, dev, net, ssid, i, b):
-        return (16, "66666666666666666666666666",1) # FIXME
-
-    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
-                         in_signature="sbsisi", out_signature='')
-    def updateNetworkInfo(self, ssid, b, ap, i1, secret, i2):
-        pass
-
+def mkconmap_psk(ssid, key):
+    cm = mkconmap_wifi(ssid)
+    cm["802-11-wireless-security"]["key-mgmt"] = "wpa-psk"
+    cm["802-11-wireless-security"]["wep-tx-keyidx"] = 0
+    cm["802-11-wireless-security"]["psk"] = key
+    return cm
 
 
 # server analog of cApplet
@@ -718,6 +855,11 @@ class UserSettings(dbus.service.Object):
         dbus.service.Object.__init__(self, bus, opath)
         #print "CONMAPS:", conmaps
         self.conns = map(self.newCon, conmaps)
+
+    def addCon(self, conmap):
+        c = self.newCon(conmap)
+        self.conns.append(c)
+        return c
 
     counter = 1
     def newCon(self, conmap):
@@ -738,6 +880,84 @@ class UserSettings(dbus.service.Object):
     def NewConnection(self, opath):
         pass
         #print "signalling newconn:", opath
+
+    def GetByNet(self, net_name):
+        "Returns connection, or None"
+        for c in self.conns:
+            if c.isNet(net_name):
+                return c
+        return None
+
+
+class UserSettings_06(UserSettings):
+    # conmaps is a list
+    def __init__(self, opath, conmaps):
+        dbus.service.Object.__init__(self, bus, opath)
+        #print "CONMAPS:", conmaps
+        self.conns = map(self.newCon, conmaps)
+
+    counter = 1
+    def newCon(self, conmap):
+        cpath = "/MyConnection/%d" % self.counter
+        self.counter = self.counter + 1
+        c = Connection_06(cpath, conmap)
+        #self.NewConnection(cpath) # announce it
+        return c
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="i", out_signature='as')
+    def getNetworks(self, i):
+        # FIXME bytearray to str WHERE?
+        #n = [ssid_str(c.Ssid()) for c in self.conns]
+        n = [c.ID() for c in self.conns]
+        print "getNetworks:", n
+        return n
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="", out_signature='ao') # out??
+    def getVPNConnections(self):
+        return []               # FIXME
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="si")
+                         #out_signature='sibasi') #varies
+    def getNetworkProperties(self, net, type):
+        print "GNP", net
+        # type is 1, NETWORK_TYPE_ALLOWED
+        c = self.GetByNet(net)
+        if c != None:
+            return c.getNetworkProperties()
+        print "Oops, could not getNetworkProperties for " + net
+        
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         in_signature="oosib")
+                         #out_signature="isi") varies
+    def getKeyForNetwork(self, dev, net, ssid, attempt, newkey):
+        print "GKFN", dev, net, ssid, attempt, bool(newkey)
+        if newkey:
+            m = "Cannot ask for key"
+            print m
+            raise dbus.exceptions.DBusException(m)
+
+        snet = opath_unescape(net[net.rfind("/")+1 : ]) # only stuff after /
+        c = self.GetByNet(snet)
+        if c != None:
+            return c.getKeyForNetwork()
+        print "Oops, could not getKeyForNetwork " + net
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerInfo",
+                         out_signature='')
+                         #in_signature="sbs isi", varies
+    def updateNetworkInfo(self, ssid, automatic, bssid, *security):
+        print "Connected successfully"
+        return
+        print "UNI"
+        print " ssid:", ssid
+        print " automatic:", bool(automatic)
+        print " bssid:", bssid
+        print " security:", security
+
 
     def GetByNet(self, net_name):
         "Returns connection, or None"
@@ -770,11 +990,60 @@ class Connection(dbus.service.Object):
 
     @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection',
                              in_signature='', out_signature='s')
-    def GetID(self):
-        return self.settings.GetID()
+    def ID(self):
+        return self.settings.ID()
+
+    def Ssid(self):
+        return self.settings.Ssid()
 
     def isNet(self, net_name):
         return self.settings.isNet(net_name)
+
+class Connection_06(Connection):
+    def __init__(self, opath, conmap):
+        dbus.service.Object.__init__(self, bus, opath)
+        #print "C6", conmap
+        self.settings = cSettings(conmap)
+
+    # dbus.service.method
+    def getNetworkProperties(self):
+        # essid, timestamp, ?, bssids, we_cipher, ?, ...
+        # we_cipher=16: i wep_auth_algorithm
+        # we_cipher=0:  i wpa_psk_key_mgt, i wpa_psk_wpa_version
+        ssid = ssid_str(self.settings.Ssid())
+        time = self.settings.Timestamp() # last sucessfully connected? seen?
+        trusted = self.settings.Trusted()
+        bssids = dbus.Array(self.settings.SeenBssids(), signature="s")
+        r = [ssid, time, trusted, bssids]
+        security = self.getKeyForNetwork("fake key")
+        r.extend(security)
+        return tuple(r)
+
+    # dbus.service.method
+    def getKeyForNetwork(self, fake="no"):
+        if fake == "no":
+            key = self.settings.Key()
+        else:
+            key = ""
+
+        # security
+        cip = self.settings.WeCipher()
+        if cip == NM_AUTH_TYPE_NONE:
+            security = tuple([cip])
+        elif cip == NM_AUTH_TYPE_WEP40 or cip == NM_AUTH_TYPE_WEP104:
+            wep_auth_algorithm = self.settings.WepAuthAlgorithm()
+            security = (cip, key, wep_auth_algorithm)
+        elif cip == NM_AUTH_TYPE_WPA_PSK_AUTO or cip == NM_AUTH_TYPE_TKIP or \
+                cip == NM_AUTH_TYPE_CCMP:
+            wpa_psk_key_mgt = self.settings.PskKeyMgt()
+            wpa_psk_wpa_version = self.settings.PskWpaVersion()
+            security = (cip, key, wpa_psk_key_mgt, wpa_psk_wpa_version)
+        elif cip == NM_AUTH_TYPE_WPA_EAP:
+            security = tuple([cip]) # TODO more...
+        elif cip == NM_AUTH_TYPE_LEAP:
+            security = tuple([cip]) # TODO more...
+        return security
+
 
 class ConfigParserKNM:
     "Parse ~/.kde/share/config/knetworkmanagerrc"
@@ -914,8 +1183,17 @@ op.add_option("-o", "--online",
               help="enable or disable network at all")
 
 op.add_option("-C", "--connect",
-              help="connect to a wireless network NET (using knetworkmanagerrc)",
+              help="connect to a wireless network NET (using knetworkmanagerrc or the key options below)",
               metavar="NET")
+op.add_option("--unprotected",
+              action="store_true", default=False,
+              help="network does not require a key")
+op.add_option("--wep-hex",
+              metavar="KEY",
+              help="use this WEP key of 26 hex digits")
+op.add_option("--wpa-psk-hex",
+              metavar="KEY",
+              help="use this WPA key of 64 hex digits")
 op.add_option("-m", "--monitor",
               action="store_true", default=False,
               help="loop to show dbus signals")
@@ -950,13 +1228,19 @@ if options.nets:
 
 if options.syscon:
     print "SYSTEM Connections"
-    ss = cApplet(SSC, '/org/freedesktop/NetworkManagerSettings')
-    ss.Dump()
+    if nm.Api() == "06":
+        print "Cannot do that with NM 0.6"
+    else:
+        ss = cApplet(SSC, '/org/freedesktop/NetworkManagerSettings')
+        ss.Dump()
 
 if options.usrcon:
     print "USER Connections"
     try:
-        us = cApplet(USC, '/org/freedesktop/NetworkManagerSettings')
+        if nm.Api() == "06":
+            us = cApplet_06(NMIC, "/org/freedesktop/NetworkManagerInfo")
+        else:
+            us = cApplet(USC, '/org/freedesktop/NetworkManagerSettings')
         us.Dump()
     except dbus.exceptions.DBusException, e:
         print e
@@ -968,12 +1252,19 @@ nmi = dbus.Interface(nmo, NMI)
 
 # TODO UserSettings_06
 if options.connect != None:
-    brn = bus.request_name(USC, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
+    if nm.Api() == "06":
+        brn = bus.request_name(NMIC, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
+    else:
+        brn = bus.request_name(USC, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
     if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
         print "Could not provide settings service, another applet is running"
         sys.exit(1)
     cfg = ConfigParserKNM()
-    us = UserSettings("/org/freedesktop/NetworkManagerSettings",
+    if nm.Api() == "06":
+        us = UserSettings_06("/org/freedesktop/NetworkManagerInfo",
+                             cfg.ConMaps())
+    else:
+        us = UserSettings("/org/freedesktop/NetworkManagerSettings",
                       cfg.ConMaps())
 
 def Connect(wanted_net):  # any. or take arg. net is config name or ssid name
@@ -993,15 +1284,24 @@ def Connect(wanted_net):  # any. or take arg. net is config name or ssid name
     if found_ap == None:
 	print "No AP found with SSID", wanted_net
         return False
-    elif found_con == None:
-        print "No settings for net", wanted_net
-        return False
-    else:
-	nm.ActivateConnection(found_con, found_dev, found_ap) # TODO async
-	# TODO run loop, exit it when we have serviced the required calls
-        return True
+    if found_con == None:
+        print "No settings for net %s, assuming no key is needed" % wanted_net
+        c = mkconmap_wifi(wanted_net)
+        found_con = us.addCon(c)
+    nm.ActivateConnection(found_con, found_dev, found_ap) # TODO async
+    # TODO run loop, exit it when we have serviced the required calls
+    return True
 
 if options.connect != None:
+    if options.unprotected:
+        c = mkconmap_wifi(options.connect)
+        us.addCon(c)
+    if options.wep_hex != None:
+        c = mkconmap_wep(options.connect, options.wep_hex)
+        us.addCon(c)
+    if options.wpa_psk_hex != None:
+        c = mkconmap_psk(options.connect, options.wpa_psk_hex)
+        us.addCon(c)
     if Connect(options.connect):
         LOOP = True
 
