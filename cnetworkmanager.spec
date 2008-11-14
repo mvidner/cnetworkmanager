@@ -1,5 +1,5 @@
 Name:           cnetworkmanager
-Version:        0.7.1
+Version:        0.8
 Release:        1
 Summary:        Command-line client for NetworkManager
 License:        GPL
@@ -8,9 +8,7 @@ Group:          Productivity/Networking/System
 Requires:	dbus-1-python python-gobject2
 BuildRoot:      %{_tmppath}/%{name}-root
 BuildArch:	noarch
-Source:		cnetworkmanager
-Source1:	COPYING
-Source2:	README
+Source:		%{name}-%{version}.tar.gz
 
 %description
 
@@ -22,17 +20,14 @@ Authors:
     Martin Vidner <mvidner@suse.cz>
 
 %prep
-#%setup -n %{name}
+%setup
 #% patch -p1
-cp %SOURCE1 %SOURCE2 .
 
 %build
-
-# nothing
+make
 
 %install
-install -d $RPM_BUILD_ROOT/%_bindir
-install -t $RPM_BUILD_ROOT/%_bindir %SOURCE0
+make install DESTDIR=$RPM_BUILD_ROOT PREFIX=/usr sysconfdir=/etc
 
 %check
 
@@ -43,8 +38,9 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root)
-%_bindir/cnetworkmanager
-%doc COPYING README
+/usr/bin/cnetworkmanager
+#/etc/dbus-1/system.d/cnetworkmanager.conf
+%doc /usr/share/doc/packages/cnetworkmanager
 
 %changelog
 
