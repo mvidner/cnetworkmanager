@@ -1250,14 +1250,24 @@ if options.usrcon:
 nmo = bus.get_object(NMC, nmp)
 nmi = dbus.Interface(nmo, NMI)
 
+def service_pid(name):
+    DBS = 'org.freedesktop.DBus'
+    DBI = DBS
+    dbo = bus.get_object(DBS, '/')
+    dbi = dbus.Interface(dbo, DBI)
+    owner = dbi.GetNameOwner(name)
+    pid = dbi.GetConnectionUnixProcessID(owner)
+    return pid
+
 # TODO UserSettings_06
 if options.connect != None:
     if nm.Api() == "06":
-        brn = bus.request_name(NMIC, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
+        name = NMIC
     else:
-        brn = bus.request_name(USC, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
+        name = USC
+    brn = bus.request_name(name, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
     if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
-        print "Could not provide settings service, another applet is running"
+        print "Could not provide settings service, another applet is running (pid %s)" % service_pid(name)
         sys.exit(1)
     cfg = ConfigParserKNM()
     if nm.Api() == "06":
