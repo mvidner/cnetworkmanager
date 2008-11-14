@@ -12,6 +12,8 @@ import os
 import string
 import re
 import time
+import math
+import md5
 import ConfigParser             # knm config
 from optparse import OptionParser
 try:
@@ -833,6 +835,24 @@ def mkconmap_wifi(ssid):
             },
         }
 
+def elongate(s, tlen):
+    "repeat string s to target length tlen"
+    if s == "":
+        return ""
+    copies_needed = int(math.ceil(tlen / float(len(s))))
+    return (s * copies_needed)[:tlen]
+
+# http://www.mail-archive.com/networkmanager-list@gnome.org/msg07935.html
+def wep_passphrase_to_hash(p):
+    return md5.new(elongate(p, 64)).hexdigest()
+
+def mkconmap_wep_pass(ssid, key):
+    cm = mkconmap_wifi(ssid)
+    cm["802-11-wireless-security"]["key-mgmt"] = "none"
+    cm["802-11-wireless-security"]["wep-tx-keyidx"] = 0
+    cm["802-11-wireless-security"]["wep-key0"] = wep_passphrase_to_hash(key)
+    return cm
+
 def mkconmap_wep(ssid, key):
     cm = mkconmap_wifi(ssid)
     cm["802-11-wireless-security"]["key-mgmt"] = "none"
@@ -1191,6 +1211,9 @@ op.add_option("--unprotected",
 op.add_option("--wep-hex",
               metavar="KEY",
               help="use this WEP key of 26 hex digits")
+op.add_option("--wep-pass",
+              metavar="KEY",
+              help="use this WEP passphrase")
 op.add_option("--wpa-psk-hex",
               metavar="KEY",
               help="use this WPA key of 64 hex digits")
@@ -1298,6 +1321,9 @@ if options.connect != None:
         us.addCon(c)
     if options.wep_hex != None:
         c = mkconmap_wep(options.connect, options.wep_hex)
+        us.addCon(c)
+    if options.wep_pass != None:
+        c = mkconmap_wep_pass(options.connect, options.wep_pass)
         us.addCon(c)
     if options.wpa_psk_hex != None:
         c = mkconmap_psk(options.connect, options.wpa_psk_hex)
