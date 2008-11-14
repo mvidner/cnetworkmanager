@@ -1,0 +1,31 @@
+[10]Cnetworkmanager is a command-line client for [11]NetworkManager,
+intended to supplement and replace the GUI applets. So far it is a single
+python script. What is new in version 0.7.1:
+
+  * it does not need a configuration file anymore:
+    cnetworkmanager -C publicnet
+    cnetworkmanager -C myessid --wep-hex 112234445566778899aabbccdd
+    cnetworkmanager -C another --wpa-psk-hex \
+      112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00
+  * it works with NM 0.6 (tested on [12]Ubuntu 8.04 Hardy and a
+    pre-release [13]OLPC) in addition to the older support for NM 0.7pre
+    (tested on [14]openSUSE 11.0)
+
+What is still left to do:
+
+  * sooner:
+       * specifying the key as a non-hex passphrase
+       * reading the configuration stored by the GNOME nm-applet
+       * possibility to quit after a connection is established
+
+  * later:
+       * more encryption schemes (WPA2?)
+       * more connection types (dial-up, VPN)
+
+Links:
+9. http://mvidner.blogspot.com/2008/07/cnetworkmanager-071.html
+10. http://vidner.net/martin/software/cnetworkmanager/
+11. http://www.gnome.org/projects/NetworkManager/
+12. http://www.ubuntu.com/
+13. http://laptop.org/
+14. http://software.opensuse.org/
