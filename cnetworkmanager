@@ -14,7 +14,7 @@ import re
 import time
 import uuid
 import math
-import md5
+import hashlib
 import ConfigParser             # knm config
 from optparse import OptionParser
 try:
@@ -846,7 +846,7 @@ def elongate(s, tlen):
 
 # http://www.mail-archive.com/networkmanager-list@gnome.org/msg07935.html
 def wep_passphrase_to_hash(p):
-    return md5.new(elongate(p, 64)).hexdigest()
+    return hashlib.md5(elongate(p, 64)).hexdigest()
 
 def mkconmap_wep_pass(ssid, key):
     cm = mkconmap_wifi(ssid)
