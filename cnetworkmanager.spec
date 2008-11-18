@@ -39,7 +39,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root)
 /usr/bin/cnetworkmanager
-#/etc/dbus-1/system.d/cnetworkmanager.conf
+/etc/dbus-1/system.d/cnetworkmanager.conf
 %doc /usr/share/doc/packages/cnetworkmanager
 
 %changelog
