@@ -5,6 +5,7 @@ python script. What is new in version 0.7.1:
   * it does not need a configuration file anymore:
     cnetworkmanager -C publicnet
     cnetworkmanager -C myessid --wep-hex 112234445566778899aabbccdd
+    cnetworkmanager -C moria   --wep-pass SpeakFriendAndEnter  # 0.8
     cnetworkmanager -C another --wpa-psk-hex \
       112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00
   * it works with NM 0.6 (tested on [12]Ubuntu 8.04 Hardy and a
@@ -14,7 +15,6 @@ python script. What is new in version 0.7.1:
 What is still left to do:
 
   * sooner:
-       * specifying the key as a non-hex passphrase
        * reading the configuration stored by the GNOME nm-applet
        * possibility to quit after a connection is established
 

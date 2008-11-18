@@ -1,0 +1,13 @@
+-------------------------------------------------------------------
+Tue Nov 18 18:08:14 CET 2008 - mvidner@suse.cz
+
+- v0.8
+- New: --wep-pass
+- New: if there is another applet, report its pid
+- Fix: do not rely on DBus config from GUI applets
+
+-------------------------------------------------------------------
+Fri Nov 07 14:45:00 CET 2008 - mvidner@suse.cz
+
+- initial packaging
+

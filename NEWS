@@ -1,3 +1,8 @@
+0.8, Fri 2008-11-14
+New: --wep-pass
+New: if there is another applet, report its pid
+Fix: do not rely on DBus config from GUI applets
+
 0.7, Sat 2008-07-12
 New: can connect and show settings with NM 0.6
 New: keys can be specified as CLI options, knetwormanagerrc not needed
