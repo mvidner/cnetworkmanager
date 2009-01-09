@@ -3,7 +3,7 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://www.gnu.org/licenses/gpl-2.0.html or later
 
-VERSION = "0.8"
+VERSION = "0.8.1"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False
@@ -225,7 +225,7 @@ class cActiveConnection:
        print self.opath
        co = bus.get_object(NMC, self.opath)
        copi = dbus.Interface(co, PI)
-       for P in ["ServiceName", "Connection", "SharedServiceName", "SharedConnection", "SpecificObject",]:
+       for P in ["ServiceName", "Connection", "SpecificObject",]:
            print "  %s: %s" % (P, copi.Get(NMI, P))
        devs = copi.Get(NMI, "Devices")
        print "  Devices:"
@@ -278,16 +278,10 @@ class cDevice:
             addrs = pi.Get(NMI, "Addresses")
             for addr in addrs:
                 print "     %s/%s via %s" %  tuple(map(self.ip_str, addr))
-        hn = pi.Get(NMI, "Hostname")
-        print "    Hostname:", hn
         nss = pi.Get(NMI, "Nameservers")
         print "    Nameservers:", " ".join(map(self.ip_str, nss))
         doms = pi.Get(NMI, "Domains")
         print "    Domains:", " ".join(doms)
-        nisd = pi.Get(NMI, "NisDomain")
-        print "    NisDomain:", nisd
-        niss = pi.Get(NMI, "NisServers")
-        print "    NisServers:", " ".join(map(self.ip_str, niss))
 
     NM_DEVICE_CAP = {1: "NM_SUPPORTED", 2: "CARRIER_DETECT", 4: "SCANNING", }
 
@@ -647,7 +641,6 @@ class cConnection:
 
     def Dump(self):
        print "Conn:", self.opath
-       print " Id:", self.ci.GetID()
        settings = self.Settings()
        settings.Dump()
 
