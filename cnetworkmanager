@@ -15,6 +15,8 @@ import time
 import uuid
 import math
 import hashlib
+import pbkdf2
+from binascii import hexlify
 import ConfigParser             # knm config
 from optparse import OptionParser
 try:
@@ -1212,6 +1214,9 @@ op.add_option("--wep-pass",
 op.add_option("--wpa-psk-hex",
               metavar="KEY",
               help="use this WPA key of 64 hex digits")
+op.add_option("--wpa-pass",
+	      metavar="KEY",
+	      help="use this WPA passphrase")
 op.add_option("-m", "--monitor",
               action="store_true", default=False,
               help="loop to show dbus signals")
@@ -1332,6 +1337,11 @@ if options.connect != None:
         us.addCon(c)
     if options.wpa_psk_hex != None:
         c = mkconmap_psk(options.connect, options.wpa_psk_hex)
+        us.addCon(c)
+    if options.wpa_pass != None:
+	wpa_psk_hex  = hexlify(pbkdf2.pbkdf2(options.wpa_pass, options.connect, 4096, 32))
+        print "pbkdf2", wpa_psk_hex
+	c = mkconmap_psk(options.connect, wpa_psk_hex)
         us.addCon(c)
     if Connect(options.connect):
         LOOP = True
