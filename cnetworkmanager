@@ -650,9 +650,13 @@ class cConnection:
        security = settings.Security()
        if security != "":
            print " SECRETS:", security
-           # TODO merge them
-           secrets = cSettings(si.GetSecrets(security,[],False))
-           secrets.Dump()
+           try:
+               # TODO merge them
+               secrets = cSettings(si.GetSecrets(security,[],False))
+               secrets.Dump()
+           except dbus.exceptions.DBusException, e:
+               print e
+               print "   FIXME figure out 802-1x secrets"
 
     def Settings(self):
         return cSettings(self.ci.GetSettings())
