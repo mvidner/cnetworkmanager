@@ -832,10 +832,6 @@ def mkconmap_wifi(ssid):
         '802-11-wireless': {
             'ssid': dbus.ByteArray(ssid),
             'mode': 'infrastructure',
-            'security': '802-11-wireless-security',
-            },
-        '802-11-wireless-security': {
-            'key-mgmt': 'none',
             },
         }
 
@@ -852,6 +848,8 @@ def wep_passphrase_to_hash(p):
 
 def mkconmap_wep_pass(ssid, key):
     cm = mkconmap_wifi(ssid)
+    cm["802-11-wireless"]["security"] = "802-11-wireless-security"
+    cm["802-11-wireless-security"] = {}
     cm["802-11-wireless-security"]["key-mgmt"] = "none"
     cm["802-11-wireless-security"]["wep-tx-keyidx"] = 0
     cm["802-11-wireless-security"]["wep-key0"] = wep_passphrase_to_hash(key)
@@ -866,9 +864,12 @@ def mkconmap_wep(ssid, key):
 
 def mkconmap_psk(ssid, key):
     cm = mkconmap_wifi(ssid)
+    cm["802-11-wireless"]["security"] = "802-11-wireless-security"
+    cm["802-11-wireless-security"] = {}
     cm["802-11-wireless-security"]["key-mgmt"] = "wpa-psk"
-    cm["802-11-wireless-security"]["wep-tx-keyidx"] = 0
     cm["802-11-wireless-security"]["psk"] = key
+    cm["802-11-wireless-security"]["group"] =    ["tkip", "ccmp"]
+    cm["802-11-wireless-security"]["pairwise"] = ["tkip", "ccmp"]
     return cm
 
 
