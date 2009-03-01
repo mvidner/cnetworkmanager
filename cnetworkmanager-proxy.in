@@ -1,0 +1,2 @@
+#!/bin/sh
+exec @PREFIX@/share/@PACKAGE@/@PACKAGE@ --prefix "@PREFIX@" "$@"
