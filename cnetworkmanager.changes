@@ -1,4 +1,12 @@
 -------------------------------------------------------------------
+Mon Mar 02 13:33:33 CET 2009 - mvidner@suse.cz
+
+- v0.8.2
+- New: --wpa-pass
+- Fix: connecting to unsecured WEP
+- Fix: do not crash when inspecting wired, 802-1x, NM 0.7.0 API
+
+-------------------------------------------------------------------
 Tue Nov 18 18:08:14 CET 2008 - mvidner@suse.cz
 
 - v0.8

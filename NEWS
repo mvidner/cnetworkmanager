@@ -1,3 +1,8 @@
+0.8.2, Mon 2009-03-02
+New: --wpa-pass
+Fix: connecting to unsecured WEP
+Fix: do not crash when inspecting wired, 802-1x, NM 0.7.0 API
+
 0.8, Fri 2008-11-14
 New: --wep-pass
 New: if there is another applet, report its pid

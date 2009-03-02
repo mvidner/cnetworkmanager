@@ -1,5 +1,5 @@
 PACKAGE=cnetworkmanager
-VERSION=0.8
+VERSION=0.8.2
 
 PREFIX=/usr/local
 bindir=${PREFIX}/bin

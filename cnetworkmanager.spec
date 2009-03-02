@@ -1,5 +1,5 @@
 Name:           cnetworkmanager
-Version:        0.8
+Version:        0.8.2
 Release:        1
 Summary:        Command-line client for NetworkManager
 License:        GPL
