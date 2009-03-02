@@ -8,6 +8,12 @@ print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False
 import sys
+# find other modules in our prefix, if specified
+if len(sys.argv) > 2 and sys.argv[1] == "--prefix":
+    prefix = sys.argv[2]
+    sys.argv[1:] = sys.argv[3:]
+    sys.path.append(prefix + "/share/cnetworkmanager");
+
 import os
 import string
 import re

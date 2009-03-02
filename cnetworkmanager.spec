@@ -39,6 +39,8 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root)
 /usr/bin/cnetworkmanager
+/usr/share/cnetworkmanager/cnetworkmanager
+/usr/share/cnetworkmanager/pbkdf2.py
 /etc/dbus-1/system.d/cnetworkmanager.conf
 %doc /usr/share/doc/packages/cnetworkmanager
 

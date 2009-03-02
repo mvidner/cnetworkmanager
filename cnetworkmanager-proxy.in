@@ -1,0 +1,3 @@
+#!/bin/sh
+# @configure_input@
+exec @PREFIX@/share/@PACKAGE@/@PACKAGE@ --prefix "@PREFIX@" "$@"
