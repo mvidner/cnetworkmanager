@@ -8,7 +8,7 @@ dbusdir=${sysconfdir}/dbus-1/system.d
 docdir=${PREFIX}/share/doc/packages/${PACKAGE}
 
 bin_SCRIPTS=cnetworkmanager
-dbus_DATA=cnetworkmanager.conf
+dbus_DATA=cnetworkmanager.conf cnetworkmanager-06.conf
 doc_DATA=README NEWS COPYING
 
 all:
