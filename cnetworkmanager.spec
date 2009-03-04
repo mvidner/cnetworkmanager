@@ -19,11 +19,12 @@
 
 Name:           cnetworkmanager
 Version:        0.8
-Release:        1
+Release:        2
 Summary:        Command-line client for NetworkManager
 License:        GPL v2 or later
 Url:            http://vidner.net/martin/software/cnetworkmanager/
 Group:          Productivity/Networking/System
+BuildRequires:  dbus-1
 Requires:       dbus-1-python python-gobject2
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
@@ -58,6 +59,8 @@ rm -rf %{buildroot}
 %doc /usr/share/doc/packages/cnetworkmanager
 
 %changelog
+* Sat Nov 22 2008 coolo@suse.de
+- buildrequire dbus-1 to fix file list check
 * Tue Nov 18 2008 mvidner@suse.cz
 - v0.8
 - New: --wep-pass
