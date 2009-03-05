@@ -18,8 +18,8 @@
 
 
 Name:           cnetworkmanager
-Version:        0.8
-Release:        2
+Version:        0.8.0.1
+Release:        1
 Summary:        Command-line client for NetworkManager
 License:        GPL v2 or later
 Url:            http://vidner.net/martin/software/cnetworkmanager/
@@ -60,6 +60,10 @@ rm -rf %{buildroot}
 %doc /usr/share/doc/packages/cnetworkmanager
 
 %changelog
+* Thu Mar 05 2009 mvidner@suse.cz
+- v0.8.0.1
+- Fix: secrets leak via o.fd.NMS.Connection.Secrets (CVE-2009-0365)
+- Fix: secrets leak via o.fd.NMS.Connection.GetSettings (bnc#479566#c3)
 * Sat Nov 22 2008 coolo@suse.de
 - buildrequire dbus-1 to fix file list check
 * Tue Nov 18 2008 mvidner@suse.cz

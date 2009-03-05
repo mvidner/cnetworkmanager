@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Thu Mar 05 13:33:31 CET 2009 - mvidner@suse.cz
+
+- v0.8.0.1
+- Fix: secrets leak via o.fd.NMS.Connection.Secrets (CVE-2009-0365)
+- Fix: secrets leak via o.fd.NMS.Connection.GetSettings (bnc#479566#c3)
+ 
+-------------------------------------------------------------------
 Sat Nov 22 20:27:25 CET 2008 - coolo@suse.de
 
 - buildrequire dbus-1 to fix file list check
