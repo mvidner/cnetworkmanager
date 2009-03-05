@@ -2,7 +2,7 @@
 Thu Mar 05 13:33:31 CET 2009 - mvidner@suse.cz
 
 - v0.8.3
-- Fix: secrets leak via o.fd.NMS.Connection.Secrets (CVE-2009-0365)
+- Fix: secrets leak via o.fd.NMS.Connection.Secrets (bnc#479566, CVE-2009-0365)
 - Fix: secrets leak via o.fd.NMS.Connection.GetSettings (bnc#479566#c3)
 
 -------------------------------------------------------------------
