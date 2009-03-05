@@ -1,3 +1,7 @@
+0.8.3, Thu 2009-03-05
+Fix: secrets leak via o.fd.NMS.Connection.Secrets (CVE-2009-0365)
+Fix: secrets leak via o.fd.NMS.Connection.GetSettings (bnc#479566#c3)
+
 0.8.2, Mon 2009-03-02
 New: --wpa-pass
 Fix: connecting to unsecured WEP

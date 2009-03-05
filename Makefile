@@ -1,5 +1,5 @@
 PACKAGE=cnetworkmanager
-VERSION=0.8.2
+VERSION=0.8.3
 
 PREFIX=/usr/local
 bindir=${PREFIX}/bin
@@ -11,7 +11,7 @@ docdir=${PREFIX}/share/doc/packages/${PACKAGE}
 nodist_bin_SCRIPTS=cnetworkmanager-proxy
 pkgdata_SCRIPTS=cnetworkmanager
 pkgdata_DATA=pbkdf2.py
-dbus_DATA=cnetworkmanager.conf
+dbus_DATA=cnetworkmanager.conf cnetworkmanager-06.conf
 doc_DATA=README NEWS COPYING
 EXTRA_DIST=cnetworkmanager-proxy.in
 
