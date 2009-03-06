@@ -863,6 +863,8 @@ def mkconmap_wep_pass(ssid, key):
 
 def mkconmap_wep(ssid, key):
     cm = mkconmap_wifi(ssid)
+    cm["802-11-wireless"]["security"] = "802-11-wireless-security"
+    cm["802-11-wireless-security"] = {}
     cm["802-11-wireless-security"]["key-mgmt"] = "none"
     cm["802-11-wireless-security"]["wep-tx-keyidx"] = 0
     cm["802-11-wireless-security"]["wep-key0"] = key
