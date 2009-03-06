@@ -26,6 +26,7 @@ Url:            http://vidner.net/martin/software/cnetworkmanager/
 Group:          Productivity/Networking/System
 BuildRequires:  dbus-1
 Requires:       dbus-1-python python-gobject2
+Provides:       NetworkManager-client
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
 Source:         %{name}-%{version}.tar.gz
