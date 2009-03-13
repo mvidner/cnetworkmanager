@@ -4,12 +4,14 @@
 # for details. Basically, it derives a key from a password and salt.
 
 # (c) 2004 Matt Johnston <matt @ ucc asn au>
-# This code may be freely used and modified for any purpose.
+# This code may be freely used, distributed, relicensed, and modified for any
+# purpose.
 
 # Revision history
 # v0.1  October 2004    - Initial release
 # v0.2  8 March 2007    - Make usable with hashlib in Python 2.5 and use
 # v0.3  ""                 the correct digest_size rather than always 20
+# v0.4  13 March 2009   - Mention distribution and relicensing in the copyright
 
 import sys
 import hmac
