@@ -1099,7 +1099,7 @@ class ConfigParserKNM:
         self.conmaps_d = {}
         for s in p.sections():
             path = s.split("_")
-            #print path
+            #print "##", path
             if path[0] in ["ConnectionSetting", "ConnectionSecrets"]:
                 cid = path[1]
                 self.conmaps_d.setdefault(cid, {})
@@ -1107,11 +1107,19 @@ class ConfigParserKNM:
 
                 values = {}
                 for (n, v) in p.items(s):
-                    # WTF, Value_ is transfrmed to value_
+                    # WTF, Value_ is transformed to value_
                     if n[:6]  == "value_":
                         n = n[6:]
                         v = self.ParseValue(v)
-                        values[n] = v
+                        #print "# %s:%s" % (n, v)
+                        # do not overwrite ConnectionSecrets
+                        # with empty ConnectionSettings field
+                        try:
+                            vv = self.conmaps_d[cid][part][n]
+                        except KeyError:
+                            vv = ""
+                        if vv == "":
+                            values[n] = v
                 if len(values) != 0: # empty 802-1x confuses NM!?
                     self.conmaps_d[cid].setdefault(part, {})
                     self.conmaps_d[cid][part].update(**values)
