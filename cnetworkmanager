@@ -661,8 +661,11 @@ class cConnection:
                secrets = cSettings(si.GetSecrets(security,[],False))
                secrets.Dump()
            except dbus.exceptions.DBusException, e:
-               print e
-               print "   FIXME figure out 802-1x secrets"
+               if e.get_dbus_name() == "org.freedesktop.DBus.Error.AccessDenied":
+                   print "   Access denied"
+               else:
+                   print "  ", e
+                   print "   FIXME figure out 802-1x secrets"
 
     def Settings(self):
         return cSettings(self.ci.GetSettings())
