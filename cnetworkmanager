@@ -100,9 +100,6 @@ class cNM:
         for dev in self.Devices():
             dev.ListNets()
 
-    def reply_handler(self, opath):
-        print "Connected:", opath
-
     def err_handler(self, *args):
         print "ERR:", args
 
@@ -114,6 +111,16 @@ class cNM:
         # exit the loop that runs only because of us
         print "padla"
         sys.exit(0)
+
+    def WatchState(self):
+        bus.add_signal_receiver(self.state_changed_handler,
+                                dbus_interface="org.freedesktop.NetworkManager",
+                                signal_name="StateChanged")
+
+    def state_changed_handler(self, *args):
+        s = args[0]
+        ss = self.NM_STATE[s]
+        print "State:", ss
 
 
 def make_nm(opath):
@@ -178,16 +185,10 @@ class cNM_06(cNM):
     def ActiveConnections(self):
         return []               # at most one active connection, FIXME find it
 
-    def reply_handler(self):
-        print "Connection requested"
-
-    def err_handler(self, *args):
-        print "ERR:", args
-
     def ActivateConnection(self, conn, device, ap):
         # passing *_handler makes the call asynchronous
         self.nmi.setActiveDevice(device.opath, ssid_str(conn.Ssid()),
-                                    reply_handler=self.reply_handler,
+                                    reply_handler=self.silent_handler,
                                     error_handler=self.err_handler,
                                     )
 
@@ -220,7 +221,7 @@ class cNM_07(cNM):
                                     conn.__dbus_object_path__,
                                     device.opath,
                                     ap.opath,
-                                    reply_handler=self.reply_handler,
+                                    reply_handler=self.silent_handler,
                                     error_handler=self.err_handler,
                                     )
 
@@ -1450,6 +1451,7 @@ if options.connect != None:
         print "pbkdf2", wpa_psk_hex
 	c = mkconmap_psk(options.connect, wpa_psk_hex)
         us.addCon(c)
+    nm.WatchState()
     if Connect(options.connect):
         LOOP = True
 
