@@ -42,7 +42,7 @@ to supplement and replace the GUI applets.
 #% patch -p1
 
 %build
-make
+make PREFIX=/usr
 
 %install
 make install DESTDIR=$RPM_BUILD_ROOT PREFIX=/usr sysconfdir=/etc
