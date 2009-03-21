@@ -105,7 +105,7 @@ class cNM:
 
     def silent_handler(self, *args):
         pass
-        print "BOO!:", args
+        #print "BOO!:", args
 
     def quitter_handler(self, *args):
         # exit the loop that runs only because of us
@@ -120,6 +120,7 @@ class cNM:
     def state_changed_handler(self, *args):
         s = args[0]
         ss = self.NM_STATE[s]
+        print time.strftime("(%X)"),
         print "State:", ss
 
 
