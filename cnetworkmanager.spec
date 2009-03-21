@@ -64,6 +64,16 @@ rm -rf %{buildroot}
 %doc /usr/share/doc/packages/cnetworkmanager
 
 %changelog
+* Sat Mar 21 2009 mvidner@suse.cz
+- New: When connecting (-C), monitor the NM connection state.
+- Fix: RPM packaging: consistent PREFIX (bnc#485413), owning pkgdatadir.
+- Fix: KeyError with --wep-hex. (James Hogan)
+- Fix: knetworkmanagerrc: Don't let ConnectionSettings
+  override ConnectionSecrets.
+- Updated pbkdf2.py to the newest upstream version (license
+  clarified). (Alexander Block)
+* Fri Mar 06 2009 mvidner@suse.cz
+- Packaging fix: claim ownership of pkgdatadir
 * Thu Mar 05 2009 mvidner@suse.cz
 - v0.8.3
 - Fix: secrets leak via o.fd.NMS.Connection.Secrets (CVE-2009-0365)

@@ -1,4 +1,15 @@
 -------------------------------------------------------------------
+Sat Mar 21 07:18:00 CET 2009 - mvidner@suse.cz
+
+- New: When connecting (-C), monitor the NM connection state.
+- Fix: RPM packaging: consistent PREFIX (bnc#485413), owning pkgdatadir.
+- Fix: KeyError with --wep-hex. (James Hogan)
+- Fix: knetworkmanagerrc: Don't let ConnectionSettings
+  override ConnectionSecrets.
+- Updated pbkdf2.py to the newest upstream version (license
+  clarified). (Alexander Block)
+
+-------------------------------------------------------------------
 Fri Mar 06 17:41:09 CET 2009 - mvidner@suse.cz
 
 - Packaging fix: claim ownership of pkgdatadir
