@@ -3,7 +3,7 @@
 # by: http://en.opensuse.org/User:Mvidner
 # license: http://www.gnu.org/licenses/gpl-2.0.html or later
 
-VERSION = "0.8.3"
+VERSION = "0.8.4"
 print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
 
 norpm = False

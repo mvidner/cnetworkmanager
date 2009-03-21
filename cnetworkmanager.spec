@@ -18,7 +18,7 @@
 
 
 Name:           cnetworkmanager
-Version:        0.8.3
+Version:        0.8.4
 Release:        1
 Summary:        Command-line client for NetworkManager
 License:        GPL v2 or later
@@ -65,6 +65,7 @@ rm -rf %{buildroot}
 
 %changelog
 * Sat Mar 21 2009 mvidner@suse.cz
+- v0.8.4
 - New: When connecting (-C), monitor the NM connection state.
 - Fix: RPM packaging: consistent PREFIX (bnc#485413), owning pkgdatadir.
 - Fix: KeyError with --wep-hex. (James Hogan)

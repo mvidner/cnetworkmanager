@@ -1,6 +1,7 @@
 -------------------------------------------------------------------
 Sat Mar 21 07:18:00 CET 2009 - mvidner@suse.cz
 
+- v0.8.4
 - New: When connecting (-C), monitor the NM connection state.
 - Fix: RPM packaging: consistent PREFIX (bnc#485413), owning pkgdatadir.
 - Fix: KeyError with --wep-hex. (James Hogan)
