@@ -1288,6 +1288,8 @@ class Monitor(MonitorBase):
 
 # main
 
+fail = False
+
 op = OptionParser(version="%prog " + VERSION)
 op.add_option("-d", "--dev",
               action="store_true", default=False,
@@ -1353,7 +1355,7 @@ try:
     nm = make_nm(nmp)
 except dbus.exceptions.DBusException, e:
     print "NetworkManager is not running or running as an other user"
-    sys.exit(1)
+    fail = True
 if options.dev or options.actcon:
     nm.Dump()
 
@@ -1370,6 +1372,7 @@ if options.syscon:
     print "SYSTEM Connections"
     if nm.Api() == "06":
         print "Cannot do that with NM 0.6"
+        fail = True
     else:
         ss = cApplet(SSC, '/org/freedesktop/NetworkManagerSettings')
         ss.Dump()
@@ -1386,6 +1389,7 @@ if options.usrcon:
         print e
         #if e.get_dbus_name() == "org.freedesktop.DBus.Error.ServiceUnknown":
         print "Applet is not running"
+        fail = True
 
 nmo = bus.get_object(NMC, nmp)
 nmi = dbus.Interface(nmo, NMI)
@@ -1463,6 +1467,8 @@ if options.connect != None:
     nm.WatchState()
     if Connect(options.connect):
         LOOP = True
+    else:
+        fail = True
 
 if options.monitor:
     m = Monitor()
@@ -1476,3 +1482,6 @@ def loop():
 
 if LOOP:
     loop()
+
+if fail:
+    sys.exit(1)

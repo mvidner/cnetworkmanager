@@ -25,6 +25,9 @@ all:
 		<$$IN >$$OUT ;\
 	done
 
+check:
+	for T in test/t*.py; do $$T; done
+
 install:
 	install -d ${DESTDIR}${bindir}
 	install -T cnetworkmanager-proxy ${DESTDIR}${bindir}/cnetworkmanager
