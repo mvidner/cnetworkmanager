@@ -1,3 +1,4 @@
 cnetworkmanager-proxy
 cnetworkmanager-*.tar.*
 *.pyc
+*~
