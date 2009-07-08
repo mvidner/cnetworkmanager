@@ -18,12 +18,6 @@ import os
 import string
 import re
 import time
-import uuid
-import math
-import hashlib
-import pbkdf2
-from binascii import hexlify
-import ConfigParser             # knm config
 from optparse import OptionParser
 try:
     import dbus
@@ -32,7 +26,6 @@ try:
 except:
     print "Install python-1-dbus.rpm or or python-dbus.rpm or python-dbus.deb"
     norpm = True
-import xml.dom.minidom
 try:
     import gobject
 except:
@@ -45,6 +38,11 @@ if norpm:
 
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
+
+# private modules:
+from monitor import MonitorBase
+from configparser_knm import ConfigParserKNM
+from mkconmap import *
 
 LOOP = False
 
@@ -842,59 +840,6 @@ class cSettings:
             for n2, v2 in v1.iteritems():        
                 print "   %s: %s" % (n2, v2)
 
-def mkconmap_wifi(ssid):
-    return {
-        'connection': {
-            'id': '_cnm_handcrafted_',
-            'uuid': str(uuid.uuid1()), # new in oS 11.1
-            'type': '802-11-wireless',
-            },
-        '802-11-wireless': {
-            'ssid': dbus.ByteArray(ssid),
-            'mode': 'infrastructure',
-            },
-        }
-
-def elongate(s, tlen):
-    "repeat string s to target length tlen"
-    if s == "":
-        return ""
-    copies_needed = int(math.ceil(tlen / float(len(s))))
-    return (s * copies_needed)[:tlen]
-
-# http://www.mail-archive.com/networkmanager-list@gnome.org/msg07935.html
-def wep_passphrase_to_hash(p):
-    return hashlib.md5(elongate(p, 64)).hexdigest()
-
-def mkconmap_wep_pass(ssid, key):
-    cm = mkconmap_wifi(ssid)
-    cm["802-11-wireless"]["security"] = "802-11-wireless-security"
-    cm["802-11-wireless-security"] = {}
-    cm["802-11-wireless-security"]["key-mgmt"] = "none"
-    cm["802-11-wireless-security"]["wep-tx-keyidx"] = 0
-    cm["802-11-wireless-security"]["wep-key0"] = wep_passphrase_to_hash(key)
-    return cm
-
-def mkconmap_wep(ssid, key):
-    cm = mkconmap_wifi(ssid)
-    cm["802-11-wireless"]["security"] = "802-11-wireless-security"
-    cm["802-11-wireless-security"] = {}
-    cm["802-11-wireless-security"]["key-mgmt"] = "none"
-    cm["802-11-wireless-security"]["wep-tx-keyidx"] = 0
-    cm["802-11-wireless-security"]["wep-key0"] = key
-    return cm
-
-def mkconmap_psk(ssid, key):
-    cm = mkconmap_wifi(ssid)
-    cm["802-11-wireless"]["security"] = "802-11-wireless-security"
-    cm["802-11-wireless-security"] = {}
-    cm["802-11-wireless-security"]["key-mgmt"] = "wpa-psk"
-    cm["802-11-wireless-security"]["psk"] = key
-    cm["802-11-wireless-security"]["group"] =    ["tkip", "ccmp"]
-    cm["802-11-wireless-security"]["pairwise"] = ["tkip", "ccmp"]
-    return cm
-
-
 # server analog of cApplet
 class UserSettings(dbus.service.Object):
     # conmaps is a list
@@ -1100,135 +1045,10 @@ class Connection_06(Connection):
         return security
 
 
-class ConfigParserKNM:
-    "Parse ~/.kde/share/config/knetworkmanagerrc"
-
-    def __init__(self):
-        p = ConfigParser.RawConfigParser()
-        ok = p.read(os.getenv("HOME") + "/.kde/share/config/knetworkmanagerrc")
-
-        self.conmaps_d = {}
-        for s in p.sections():
-            path = s.split("_")
-            #print "##", path
-            if path[0] in ["ConnectionSetting", "ConnectionSecrets"]:
-                cid = path[1]
-                self.conmaps_d.setdefault(cid, {})
-                part = path[2]
-
-                values = {}
-                for (n, v) in p.items(s):
-                    # WTF, Value_ is transformed to value_
-                    if n[:6]  == "value_":
-                        n = n[6:]
-                        v = self.ParseValue(v)
-                        #print "# %s:%s" % (n, v)
-                        # do not overwrite ConnectionSecrets
-                        # with empty ConnectionSettings field
-                        try:
-                            vv = self.conmaps_d[cid][part][n]
-                        except KeyError:
-                            vv = ""
-                        if vv == "":
-                            values[n] = v
-                if len(values) != 0: # empty 802-1x confuses NM!?
-                    self.conmaps_d[cid].setdefault(part, {})
-                    self.conmaps_d[cid][part].update(**values)
-                #print "PARSED", cid, part, values
-
-    def ConMaps(self):
-        return self.conmaps_d.values()
-
-    def ParseValue(self, v):
-        v = eval('"%s"' % v)    # unescape backslashes
-        dom = xml.dom.minidom.parseString(v)
-        return self.ParseNode(dom.documentElement)
-
-    def ParseNode(self, n):
-        t = n.localName
-        if t != "list":
-            v = self.NodeText(n)
-
-        if t == "string":
-            return v
-        elif t == "byte":
-            return dbus.Byte(int(v))
-        elif t == "bool":
-            return v == "true"
-        elif t == "int32" or t == "uint32":
-            return int(v)
-        elif t == "list":
-            v = []
-            c = n.firstChild
-            while c != None:
-                if c.localName != None: # whitespace
-                    v.append(self.ParseNode(c))
-                c = c.nextSibling
-            return v
-
-    def NodeText(self, n):
-        if n.hasChildNodes():
-            return n.firstChild.wholeText
-        else:
-            return ""
-
-class MonitorBase:
-    def __init__(self):
-        self.amap = {}
-        self.specific = {}
-        bus.add_signal_receiver(self.abbr_h,
-                        path_keyword="path",
-                        interface_keyword="interface",
-                        member_keyword="member")
-
-    def ignore(self, dbus_interface, signal_name):
-        self.watch(self.null_h, dbus_interface, signal_name)
-
-    def null_h(self, *args, **kwargs):
-        pass
-
-    def watch(self, handler, dbus_interface, signal_name):
-        self.specific[dbus_interface +"."+ signal_name] = True
-        bus.add_signal_receiver(handler,
-                                dbus_interface=dbus_interface,
-                                signal_name=signal_name,
-                                path_keyword="path")
-
-    def abbr_h(self, *args, **kwargs):
-        ifc = kwargs["interface"]
-        sig = kwargs["member"]
-        if self.specific.has_key(ifc +"."+ sig):
-            return
-
-        opath = kwargs["path"]
-        line = "SIG %s: %s.%s%s" % (self.abbrev(opath,"/"),
-                                    self.abbrev(ifc,"."),
-                                    sig, args)
-        print line
-
-    def abbrev(self, s, sep):
-        words = s.split(sep)
-        words = map (self.a1, words)
-        result = sep.join(words)
-        if self.amap.has_key(result):
-            if self.amap[result] != s:
-                print "ABBR COLLISION %s was %s now %s" % (result, self.amap[result], s)
-        else:
-            print "ABBR %s is %s" % (result, s)
-        self.amap[result] = s
-        return result
-    
-    def a1(self, s):
-        if s == "":
-            return ""
-        #print "#A", s
-        # first char, delete lowercase and _ from the rest
-        return s[0] + s[1:].translate(string.maketrans("", ""),
-                                      string.lowercase + "_")
 
 class Monitor(MonitorBase):
-    def __init__(self):
-        MonitorBase.__init__(self)
+    def __init__(self, bus):
+        MonitorBase.__init__(self, bus)
 
         self.watch(
             self.propc_h,
@@ -1284,7 +1104,6 @@ class Monitor(MonitorBase):
                 v = "%u" % v
             line = "\tPROP\t%s\t%s\t(%s)" % (k, v, opath)
             print line
-
 
 # main
 
@@ -1463,9 +1282,7 @@ if options.connect != None:
         c = mkconmap_psk(options.connect, options.wpa_psk_hex)
         us.addCon(c)
     if options.wpa_pass != None:
-	wpa_psk_hex  = hexlify(pbkdf2.pbkdf2(options.wpa_pass, options.connect, 4096, 32))
-        print "pbkdf2", wpa_psk_hex
-	c = mkconmap_psk(options.connect, wpa_psk_hex)
+	c = mkconmap_psk(options.connect, options.wpa_pass)
         us.addCon(c)
     nm.WatchState()
     if Connect(options.connect):
@@ -1492,7 +1309,7 @@ if options.activate_connection != None:
     LOOP = True
 
 if options.monitor:
-    m = Monitor()
+    m = Monitor(bus)
 
 def loop():
     loop = gobject.MainLoop()
