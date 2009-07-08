@@ -132,7 +132,9 @@ def make_nm(opath):
     try:
         dummy = nmi.getDevices()
         return cNM_06(opath)
-    except dbus.exceptions.DBusException:
+    except dbus.exceptions.DBusException, e:
+        if e.get_dbus_name() == 'org.freedesktop.DBus.Error.AccessDenied':
+           raise
         return cNM_07(opath)
 
 class cNM_06(cNM):
@@ -1343,8 +1345,7 @@ nmp = '/org/freedesktop/NetworkManager'
 try:
     nm = make_nm(nmp)
 except dbus.exceptions.DBusException, e:
-    print e
-    print "NetworkManager is not running"
+    print "NetworkManager is not running or running as an other user"
     sys.exit(1)
 if options.dev or options.actcon:
     nm.Dump()
