@@ -409,6 +409,8 @@ class cDevice_07(cDevice):
                 self.__class__ = cDeviceEth_07
             elif self.dt == 2:
                 self.__class__ = cDeviceWifi_07
+            elif self.dt == 3:
+                self.__class__ = cDeviceGSM_07
         return self.dt
 
     NM_DEVICE_STATE = [
@@ -437,6 +439,11 @@ class cDevice_07(cDevice):
 class cDeviceEth_07(cDevice_07, cDeviceEth):
     def DumpMore(self):
         for P in ["HwAddress", "Speed", "Carrier"]:
+            print "  %s: %s" % (P, self.devpi.Get(NMI, P))
+
+class cDeviceGSM_07(cDevice_07):
+    def DumpMore(self):
+        for P in []:
             print "  %s: %s" % (P, self.devpi.Get(NMI, P))
 
 class cDeviceWifi_07(cDevice_07):
