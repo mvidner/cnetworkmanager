@@ -1319,6 +1319,9 @@ op.add_option("-o", "--online",
               metavar="BOOL",
               help="enable or disable network at all")
 
+op.add_option("--activate-connection",
+              help="raw API: activate the KIND(user/system) connection CON on device DEV using AP",
+              metavar="[KIND],CON,DEV,[AP]")
 op.add_option("-C", "--connect",
               help="connect to a wireless network NET (using knetworkmanagerrc or the key options below)",
               metavar="NET")
@@ -1469,6 +1472,24 @@ if options.connect != None:
         LOOP = True
     else:
         fail = True
+
+if options.activate_connection != None:
+    (svc, conpath, devpath, appath) = options.activate_connection.split(',')
+    if svc == "" or svc == "user":
+        svc = USC
+    elif svc == "system":
+        svc = SSC
+
+    if devpath == "":
+        TODO
+    if appath == "":
+        appath = "/"
+    nm.WatchState()
+    nm.nmi.ActivateConnection(svc, conpath, devpath, appath,
+                              reply_handler=nm.silent_handler,
+                              error_handler=nm.err_handler,
+                              )
+    LOOP = True
 
 if options.monitor:
     m = Monitor()
