@@ -57,6 +57,7 @@ from ap06 import cAP_06
 from ap07 import cAP_07
 from applet import cApplet, SSC, USC, NMIC
 from applet06 import cApplet_06
+from settings import cSettings
 
 LOOP = False
 

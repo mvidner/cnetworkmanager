@@ -1,6 +1,7 @@
 from manager import cNM, NMI
 from object import *
 from device07 import cDevice_07
+from applet import USC
 
 class cNM_07(cNM):
     def Api(self):

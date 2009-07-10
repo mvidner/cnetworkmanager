@@ -1,5 +1,5 @@
 import dbus
-
+import time
 import object
 
 NMI = 'org.freedesktop.NetworkManager'
@@ -57,7 +57,7 @@ class cNM(object.cObject):
 
     def WatchState(self):
         self.bus.add_signal_receiver(self.state_changed_handler,
-                                dbus_interface="org.freedesktop.NetworkManager",
+                                dbus_interface=NMI,
                                 signal_name="StateChanged")
 
     def state_changed_handler(self, *args):
