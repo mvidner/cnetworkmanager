@@ -1,3 +1,5 @@
+from util import *
+
 class cConnection_06:
     def __init__(self, applet, id):
         self.id = id

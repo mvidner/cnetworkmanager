@@ -1,5 +1,6 @@
 import dbus.service
 from svc_settings import UserSettings
+from util import *
 
 class UserSettings_06(UserSettings):
     # conmaps is a list
