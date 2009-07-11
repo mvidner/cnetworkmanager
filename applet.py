@@ -13,8 +13,8 @@ class cApplet(cObject):
         cObject.__init__(self, opath, svc)
         self.si = dbus.Interface(self.obj, 'org.freedesktop.NetworkManagerSettings')
 
-    def get_property(self, property_name):
-        return cObject.get_property(self, NMI, property_name)
+    def prop_iface(self):
+        return NMI
 
     def isSystem(self):
         return self.svc == SSC;

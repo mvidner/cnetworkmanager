@@ -8,11 +8,8 @@ class cAP(cObject):
         # for _06
         self.devi = dbus.Interface(self.obj, NMI + ".Devices")
 
-    def get_property(self, property_name):
-        return cObject.get_property(self, NMI, property_name)
-
-    def set_property(self, property_name, value):
-        return cObject.set_property(self, NMI, property_name, value)
+    def prop_iface(self):
+        return NMI
 
     NM_802_11_AP_FLAGS = {1: "PRIVACY",}
 

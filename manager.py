@@ -13,11 +13,8 @@ class cNM(object.cObject):
         self.nmi = dbus.Interface(self.obj, NMI)
         self.options = options
 
-    def get_property(self, property_name):
-        return object.cObject.get_property(self, NMI, property_name)
-
-    def set_property(self, property_name, value):
-        return object.cObject.set_property(self, NMI, property_name, value)
+    def prop_iface(self):
+        return NMI
 
     def Api(self):
         return "common"

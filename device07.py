@@ -24,8 +24,7 @@ class cDevice_07(cDevice):
         cDevice.Dump(self)
 
         # "Ip4Config", only for NM_DEVICE_STATE_ACTIVATED
-        for P in ["Udi", "Interface", "Driver",]:
-            print "  %s: %s" % (P, self.get_property(P))
+        self.dump_props(["Udi", "Interface", "Driver",])
         addr = self.get_property("Ip4Address")
         print "  Ip4Address:", self.ip_str(addr)
         caps = self.get_property("Capabilities")
@@ -41,13 +40,11 @@ class cDevice_07(cDevice):
 
 class cDeviceEth_07(cDevice_07, cDeviceEth):
     def DumpMore(self):
-        for P in ["HwAddress", "Speed", "Carrier"]:
-            print "  %s: %s" % (P, self.get_property(P))
+        self.dump_props(["HwAddress", "Speed", "Carrier"])
 
 class cDeviceGSM_07(cDevice_07):
     def DumpMore(self):
-        for P in []:
-            print "  %s: %s" % (P, self.get_property(P))
+        self.dump_props([])
 
 class cDeviceWifi_07(cDevice_07):
     NM_802_11_DEVICE_CAP = {1:"CIPHER_WEP40", 2:"CIPHER_WEP104",
@@ -63,10 +60,10 @@ class cDeviceWifi_07(cDevice_07):
         print "  Dev Mode:", self.IW_MODE[self.get_property("Mode")]
         wcaps = self.get_property("WirelessCapabilities")
         print "  Wifi Capabilities:", bitmask_str(self.NM_802_11_DEVICE_CAP, wcaps)
-        for P in ["HwAddress", "Bitrate", "ActiveAccessPoint"]:
-            print "  %s: %s" % (P, self.get_property(P))
+        self.dump_props(["HwAddress", "Bitrate", "ActiveAccessPoint"])
 #FIXME pass options otherwise
 #        if self.options.ap:
+        if True:
             print "  Access Points"
             for ap in self.APs():
                 ap.Dump()

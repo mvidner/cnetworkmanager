@@ -8,11 +8,8 @@ class cDevice(cObject):
         self.dt = None
         self.DeviceType0()
 
-    def get_property(self, property_name):
-        return cObject.get_property(self, NMI, property_name)
-
-    def set_property(self, property_name, value):
-        return cObject.set_property(self, NMI, property_name, value)
+    def prop_iface(self):
+        return NMI
 
     DEVICE_TYPE = ["UNKNOWN", "802_3_ETHERNET", "802_11_WIRELESS",
                    "GSM", "CDMA",] #OLPC: 3 is MESH

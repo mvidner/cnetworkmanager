@@ -29,8 +29,7 @@ class cAP_07(cAP):
     def Dump(self):
         print "  AP:", self.opath
         print "    Ssid:", self.Ssid()
-        for P in ["Frequency", "HwAddress", "MaxBitrate",]:
-            print "    %s: %s" % (P, self.get_property(P))
+        self.dump_props(["Frequency", "HwAddress", "MaxBitrate"], indent="    ")
         print "    Strength:", self.Strength()
         print "    AP Mode:", cDevice.IW_MODE[self.get_property("Mode")]
         print "    AP Flags:", bitmask_str(self.NM_802_11_AP_FLAGS,

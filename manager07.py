@@ -45,8 +45,7 @@ class cActiveConnection(cObject):
 
     def Dump(self):
        print self.opath
-       for P in ["ServiceName", "Connection", "SpecificObject",]:
-           print "  %s: %s" % (P, self.get_property(P))
+       self.dump_props(["ServiceName", "Connection", "SpecificObject",])
        devs = self.get_property("Devices")
        print "  Devices:"
        for dev in devs:
