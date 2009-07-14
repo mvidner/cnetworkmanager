@@ -40,12 +40,12 @@ class cActiveConnection(cObject):
     def __init__(self, opath):
         cObject.__init__(self, opath)
 
-    def get_property(self, property_name):
-        return cObject.get_property(self, NMI, property_name)
+    def prop_iface(self):
+        return NMI
 
     def Dump(self):
        print self.opath
-       self.dump_props(["ServiceName", "Connection", "SpecificObject",])
+       self.dump_props(["ServiceName", "Connection", "SpecificObject", "State", "Default"])
        devs = self.get_property("Devices")
        print "  Devices:"
        for dev in devs:
