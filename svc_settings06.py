@@ -1,10 +1,12 @@
 import dbus.service
 from svc_settings import UserSettings
+from svc_connection06 import Connection_06
 from util import *
 
 class UserSettings_06(UserSettings):
     # conmaps is a list
     def __init__(self, opath, conmaps):
+        bus = dbus.SystemBus()
         dbus.service.Object.__init__(self, bus, opath)
         #print "CONMAPS:", conmaps
         self.conns = map(self.newCon, conmaps)

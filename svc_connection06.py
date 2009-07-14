@@ -1,9 +1,11 @@
 import dbus
 from svc_connection import Connection
-from settings import cSettings
+from settings import cSettings, NM_AUTH_TYPE_NONE
+from util import *
 
 class Connection_06(Connection):
     def __init__(self, opath, conmap):
+        bus = dbus.SystemBus()
         dbus.service.Object.__init__(self, bus, opath)
         #print "C6", conmap
         self.settings = cSettings(conmap)

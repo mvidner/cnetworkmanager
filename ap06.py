@@ -1,4 +1,7 @@
+from device import cDevice, cDeviceEth
+import device06
 from ap import cAP
+from util import *
 
 class cAP_06(cAP):
     def Mbr(self, props=None):
@@ -9,7 +12,7 @@ class cAP_06(cAP):
     
     def PrivS(self):
         props = self.devi.getProperties()
-        caps_s = bitmask_str(cDeviceWifi_06.NM_802_11_CAP, props[7]) + ","
+        caps_s = bitmask_str(device06.cDeviceWifi_06.NM_802_11_CAP, props[7]) + ","
         priv_s = ""
         if caps_s.find("PROTO_WEP,") != -1:
             priv_s += " WEP"
@@ -41,6 +44,6 @@ class cAP_06(cAP):
         print "    Frequency:", props[4]
         print "    MaxBitrate:", self.Mbr(props)
         print "    AP Mode:", cDevice.IW_MODE[props[6]]
-        print "    Capabilities:", bitmask_str(cDeviceWifi_06.NM_802_11_CAP, props[7])
+        print "    Capabilities:", bitmask_str(device06.cDeviceWifi_06.NM_802_11_CAP, props[7])
         print "    Broadcast:", props[8]
         

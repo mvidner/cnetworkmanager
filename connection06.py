@@ -1,4 +1,5 @@
 from util import *
+import applet06
 
 class cConnection_06:
     def __init__(self, applet, id):
@@ -8,7 +9,7 @@ class cConnection_06:
     def Dump(self):
         print "Conn:", self.id
 
-        np = self.applet.ii.getNetworkProperties(self.id, NETWORK_TYPE_ALLOWED)
+        np = self.applet.ii.getNetworkProperties(self.id, applet06.NETWORK_TYPE_ALLOWED)
         ssid = np[0]
         print " ssid:", ssid
         print " time:", dump_time(np[1])

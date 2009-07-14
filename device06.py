@@ -1,4 +1,8 @@
+import dbus
 from device import cDevice, cDeviceEth
+from manager import NMI
+from ap06 import cAP_06
+from util import *
 
 class cDevice_06(cDevice):
     def DeviceType0(self):
@@ -65,7 +69,7 @@ class cDeviceWifi_06(cDevice_06):
         }
 
     def APs(self):
-        self.wdevi = dbus.Interface(self.devo, NMI + ".Device.Wireless")
+        self.wdevi = dbus.Interface(self.obj, NMI + ".Device.Wireless")
         aps = self.devi.getProperties()[20]
         return map(cAP_06, aps)
 
@@ -80,7 +84,9 @@ class cDeviceWifi_06(cDevice_06):
         print "  Current net:", props[19]           # s
         nets = props[20]                            # as
         print "  Seen nets:", " ".join(nets)
-        if options.ap:
+#FIXME pass options otherwise
+#        if self.options.ap:
+        if True:
             print "  Access Points"
             for ap in self.APs():
                 ap.Dump()

@@ -1,4 +1,7 @@
+import dbus
 import manager
+from device06 import cDevice_06
+from util import *
 
 class cNM_06(manager.cNM):
     def Api(self):

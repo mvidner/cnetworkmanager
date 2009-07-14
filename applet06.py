@@ -1,13 +1,12 @@
+from object import *
 from connection06 import cConnection_06
 from applet import cApplet
 
 NETWORK_TYPE_ALLOWED = 1
 class cApplet_06(cApplet):
     def __init__(self, svc, opath):
-        self.svc = svc
-        self.opath = opath
-        self.io = bus.get_object(self.svc, self.opath)
-        self.ii = dbus.Interface(self.io, 'org.freedesktop.NetworkManagerInfo')
+        cObject.__init__(self, opath, svc)
+        self.ii = dbus.Interface(self.obj, 'org.freedesktop.NetworkManagerInfo')
 
     def isSystem(self):
         return False;
