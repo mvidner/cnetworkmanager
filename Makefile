@@ -26,7 +26,7 @@ all:
 	done
 
 check:
-	for T in test/t*.py; do $$T; done
+	for T in test/test*.py; do $$T; done
 
 install:
 	install -d ${DESTDIR}${bindir}

@@ -1,0 +1,14 @@
+Release Checklist
+
+- NEWS, .changes, %changelog
+- README
+- version: program, spec def, Makefile
+- make dist
+- osc build standard
+- homepage
+- tarball: publish
+- RPM: submit
+- notify packagers
+- announce on nm-list, freshmeat, blog
+
+- git: commit, tag, push
