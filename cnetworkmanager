@@ -1,304 +1,191 @@
-#! /usr/bin/python
-# cnetworkmanager: Command Line Interface for NetworkManager
-# by: http://en.opensuse.org/User:Mvidner
-# license: http://www.gnu.org/licenses/gpl-2.0.html or later
+#!/usr/bin/python
+VERSION = "0.20"
 
-VERSION = "0.8.4"
-print "cnetworkmanager %s - Command Line Interface for NetworkManager" % VERSION
-
-norpm = False
 import sys
-# find other modules in our prefix, if specified
-if len(sys.argv) > 2 and sys.argv[1] == "--prefix":
-    prefix = sys.argv[2]
-    sys.argv[1:] = sys.argv[3:]
-    sys.path.append(prefix + "/share/cnetworkmanager");
+import dbus
+from networkmanager.networkmanager import NetworkManager, SYSTEM_SERVICE, USER_SERVICE
+from networkmanager.settings.settings import NetworkManagerSettings
 
-import os
-from optparse import OptionParser
-try:
-    import dbus
-    import dbus.service
-    import _dbus_bindings
-except:
-    print "Install python-1-dbus.rpm or or python-dbus.rpm or python-dbus.deb"
-    norpm = True
-try:
-    import gobject
-except:
-    # todo - only if loop wanted
-    print "Install python-gobject2.rpm or pygobject2.rpm or python-gobject.deb"
-    norpm = True
-# python-gnome.rpm has gconf for nm-applet...
-if norpm:
-    sys.exit(1)
-
+# must be set before we ask for signals
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
-
-# private modules:
-from monitor import Monitor
-from configparser_knm import ConfigParserKNM
-from mkconmap import *
-from util import *
-
-from object import *
-from manager import *
-from manager06 import cNM_06
-from manager07 import cNM_07
-from device import cDevice
-from device06 import cDevice_06
-from device07 import cDevice_07
-from ap import cAP
-from ap06 import cAP_06
-from ap07 import cAP_07
-from applet import cApplet, SSC, USC, NMIC
-from applet06 import cApplet_06
-from settings import cSettings
-from svc_settings import UserSettings
-from svc_settings06 import UserSettings_06
-
+# for calling quit
+import gobject
+loop = gobject.MainLoop()
 LOOP = False
 
-bus = dbus.SystemBus()
-
-# FOOC = connection (service) string
-# FOOI = interface string
-# fooo = object
-# fooi = interface
-# foopi = property interface
-def introspect(obj):
-    ii = dbus.Interface(obj, 'org.freedesktop.DBus.Introspectable')
-    print ii.Introspect()
-
-def make_nm(opath):
-    "Detects NM version and chooses appropriate class"
-
-    nmo = bus.get_object(NMC, opath)
-    nmi = dbus.Interface(nmo, NMI)
-    try:
-        dummy = nmi.getDevices()
-        return cNM_06(opath, options)
-    except dbus.exceptions.DBusException, e:
-        if e.get_dbus_name() == 'org.freedesktop.DBus.Error.AccessDenied':
-           raise
-        return cNM_07(opath, options)
-
-# main
-
-fail = False
+from optparse import OptionParser
 
 op = OptionParser(version="%prog " + VERSION)
-op.add_option("-d", "--dev",
-              action="store_true", default=False,
-              help="list devices")
-op.add_option("-c", "--actcon",
-              action="store_true", default=False,
-              help="list active connections")
-op.add_option("-u", "--usrcon",
-              action="store_true", default=False,
-              help="list user connection settings (can CRASH nm-applet)")
-op.add_option("-s", "--syscon",
-              action="store_true", default=False,
-              help="list system connection settings")
-op.add_option("-a", "--ap",
-              action="store_true", default=False,
-              help="list found access points")
-op.add_option("-n", "--nets",
-              action="store_true", default=False,
-              help="list found wireless networks")
+
 # TODO http://docs.python.org/lib/optparse-adding-new-types.html
 op.add_option("-w", "--wifi",
               choices=["0","1","off","on","no","yes","false","true"],
               metavar="BOOL",
-              help="enable or disable wireless")
+              help="Enable or disable wireless")
 op.add_option("-o", "--online",
               choices=["0","1","off","on","no","yes","false","true"],
               metavar="BOOL",
-              help="enable or disable network at all")
+              help="Enable or disable network at all")
+op.add_option("--state",
+              action="store_true", default=False,
+              help="Print the NM state")
+op.add_option("--whe", "--wireless-hardware-enabled",
+              action="store_true", default=False,
+              help="Print whether the WiFi is enabled")
 
+op.add_option("-d", "--device-list", "--dev",
+              action="store_true", default=False,
+              help="List devices")
+op.add_option("--device-info",
+              help="Info about device DEV (by interface or UDI(TODO))",
+              metavar="DEV")
+
+op.add_option("--demo",
+              action="store_true", default=False,
+              help="Run a random demonstration of the API")
 op.add_option("--activate-connection",
               help="raw API: activate the KIND(user/system) connection CON on device DEV using AP",
               metavar="[KIND],CON,DEV,[AP]")
-op.add_option("-C", "--connect",
-              help="connect to a wireless network NET (using knetworkmanagerrc or the key options below)",
-              metavar="NET")
-op.add_option("--unprotected",
-              action="store_true", default=False,
-              help="network does not require a key")
-op.add_option("--wep-hex",
-              metavar="KEY",
-              help="use this WEP key of 26 hex digits")
-op.add_option("--wep-pass",
-              metavar="KEY",
-              help="use this WEP passphrase")
-op.add_option("--wpa-psk-hex",
-              metavar="KEY",
-              help="use this WPA key of 64 hex digits")
-op.add_option("--wpa-pass",
-	      metavar="KEY",
-	      help="use this WPA passphrase")
-op.add_option("-m", "--monitor",
-              action="store_true", default=False,
-              help="loop to show dbus signals")
-
 
 (options, args) = op.parse_args()
 
-if options.ap:
-    options.dev = True
-if options.monitor:
-    LOOP = True
-
-
-nmp = '/org/freedesktop/NetworkManager'
-try:
-    nm = make_nm(nmp)
-except dbus.exceptions.DBusException, e:
-    print "NetworkManager is not running or running as an other user"
-    fail = True
-if options.dev or options.actcon:
-    nm.Dump()
+nm = NetworkManager()
 
 true_choices =  ["1", "on", "yes", "true"]
 if options.wifi != None:
-    nm.SetWifiEnabled(options.wifi in true_choices)
+    nm["WirelessEnabled"] = options.wifi in true_choices
 if options.online != None:
-    nm.SetOnline(options.online in true_choices)
+    nm.Sleep(not options.online in true_choices)
+if options.state:
+    print nm["State"]
+if options.whe:
+    print nm["WirelessHardwareEnabled"]
+# style option: pretend that properties are methods (er, python properties)
+# nm["WirelessEnabled"] -> nm.WirelessEnabled() (er, nm.WirelessEnabled )
 
-if options.nets:
-    nm.ListNets()
+if options.device_list:
+    devs = nm.GetDevices()
+    for dev in devs:
+        print dev["Interface"], dev["DeviceType"], dev["State"]
 
-if options.syscon:
-    print "SYSTEM Connections"
-    if nm.Api() == "06":
-        print "Cannot do that with NM 0.6"
-        fail = True
+# --device-info, TODO clean up 
+def get_device(dev_spec, hint):
+    candidates = []
+#    print "Hint:", hint
+    devs = NetworkManager().GetDevices()
+    for dev in devs:
+#        print dev
+        if dev._settings_type() == hint:
+            candidates.append(dev)
+#    print "Candidates:", candidates
+    if len(candidates) == 1:
+        return candidates[0]
+    for dev in devs:
+        if dev["Interface"] == dev_spec:
+            return dev
+    print "Device '%s' not found" % dev_spec
+    return None
+
+def dump_prop(obj, prop_name):
+    print "%s: %s" %(prop_name, obj[prop_name])
+
+def dump_props(obj, *prop_names):
+    for prop_name in prop_names:
+        dump_prop(obj, prop_name)
+
+if options.device_info != None:
+    d = get_device(options.device_info, "no hint")
+    if d == None:
+        print "not found"
     else:
-        ss = cApplet(SSC, '/org/freedesktop/NetworkManagerSettings')
-        ss.Dump()
+        dump_props(d, "Udi", "Interface", "Driver", "Capabilities",
+               "Ip4Address", "State", "Ip4Config", "Dhcp4Config",
+               "Managed", "DeviceType")
+        if d._settings_type() == "802-11-wireless":
+            dump_props(d, "Mode", "WirelessCapabilities")
+            aap = d["ActiveAccessPoint"]
+            for ap in d.GetAccessPoints():
+                print " AP:", ap.object_path
+                if ap.object_path == aap.object_path:
+                    print "  ACTIVE"
+                dump_props(ap, "Flags", "WpaFlags", "RsnFlags",
+                           "Ssid", "Frequency", "HwAddress",
+                           "Mode", "MaxBitrate", "Strength")
+                # TODO 
+#                print "Ssid(2):", ap.Get("org.freedesktop.NetworkManager.AccessPoint", "Ssid", byte_arrays=True)
 
-if options.usrcon:
-    print "USER Connections"
-    try:
-        if nm.Api() == "06":
-            us = cApplet_06(NMIC, "/org/freedesktop/NetworkManagerInfo")
         else:
-            us = cApplet(USC, '/org/freedesktop/NetworkManagerSettings')
-        us.Dump()
-    except dbus.exceptions.DBusException, e:
-        print e
-        #if e.get_dbus_name() == "org.freedesktop.DBus.Error.ServiceUnknown":
-        print "Applet is not running"
-        fail = True
+            dump_prop(d, "Carrier")
 
-nmo = bus.get_object(NMC, nmp)
-nmi = dbus.Interface(nmo, NMI)
+#def is_opath(x):
+#    return is_instance(x, str) and x[0] == "/"
 
-def service_pid(name):
-    DBS = 'org.freedesktop.DBus'
-    DBI = DBS
-    dbo = bus.get_object(DBS, '/')
-    dbi = dbus.Interface(dbo, DBI)
-    owner = dbi.GetNameOwner(name)
-    pid = dbi.GetConnectionUnixProcessID(owner)
-    return pid
+# move this to networkmanagersettings
+def get_connection(svc, conn_spec):
+#    if is_opath(conn_spec):
+#        return conn_spec
+    applet = NetworkManagerSettings(svc)
+    for conn in applet.ListConnections():
+        cs = conn.GetSettings()
+        if cs["connection"]["id"] == conn_spec:
+            return conn
+    print "Connection '%s' not found" % conn_spec
+    return None
 
-# TODO UserSettings_06
-if options.connect != None:
-    if nm.Api() == "06":
-        name = NMIC
-    else:
-        name = USC
-    brn = bus.request_name(name, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
-    if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
-        print "Could not provide settings service, another applet is running (pid %s)" % service_pid(name)
-        sys.exit(1)
-    cfg = ConfigParserKNM()
-    if nm.Api() == "06":
-        us = UserSettings_06("/org/freedesktop/NetworkManagerInfo",
-                             cfg.ConMaps())
-    else:
-        us = UserSettings("/org/freedesktop/NetworkManagerSettings",
-                      cfg.ConMaps())
-
-def Connect(wanted_net):  # any. or take arg. net is config name or ssid name
-    #  ... in general, look for string in all config data. ssid for wifi, whatever for dialup
-    # TODO also respect autoconnect
-
-    # ActivateConn wants setting device ap; can find device from ap? ap is "specific" for wifi devices
-    #print "Connection wanted to", wanted_net
-    found_con = found_ap = found_dev = None
-    for dev in nm.Devices():
-	for ap in dev.APs():
-	    if wanted_net == ap.Ssid():
-		found_ap = ap
-		found_dev = dev
-		break # FIXME both loops
-    found_con = us.GetByNet(wanted_net)
-    if found_ap == None:
-	print "No AP found with SSID", wanted_net
-        return False
-    if found_con == None:
-        print "No settings for net %s, assuming no key is needed" % wanted_net
-        c = mkconmap_wifi(wanted_net)
-        found_con = us.addCon(c)
-    nm.ActivateConnection(found_con, found_dev, found_ap) # TODO async
-    # TODO run loop, exit it when we have serviced the required calls
-    return True
-
-if options.connect != None:
-    if options.unprotected:
-        c = mkconmap_wifi(options.connect)
-        us.addCon(c)
-    if options.wep_hex != None:
-        c = mkconmap_wep(options.connect, options.wep_hex)
-        us.addCon(c)
-    if options.wep_pass != None:
-        c = mkconmap_wep_pass(options.connect, options.wep_pass)
-        us.addCon(c)
-    if options.wpa_psk_hex != None:
-        c = mkconmap_psk(options.connect, options.wpa_psk_hex)
-        us.addCon(c)
-    if options.wpa_pass != None:
-	c = mkconmap_psk(options.connect, options.wpa_pass)
-        us.addCon(c)
-    nm.WatchState()
-    if Connect(options.connect):
-        LOOP = True
-    else:
-        fail = True
+def get_connection_devtype(conn):
+    cs = conn.GetSettings()
+    return cs["connection"]["type"]
 
 if options.activate_connection != None:
     (svc, conpath, devpath, appath) = options.activate_connection.split(',')
     if svc == "" or svc == "user":
-        svc = USC
+        svc = USER_SERVICE
     elif svc == "system":
-        svc = SSC
+        svc = SYSTEM_SERVICE
 
-    if devpath == "":
-        TODO
+    conn = get_connection(svc, conpath)
+    hint = get_connection_devtype(conn)
+    dev = get_device(devpath, hint)
     if appath == "":
         appath = "/"
-    nm.WatchState()
-    nm.nmi.ActivateConnection(svc, conpath, devpath, appath,
-                              reply_handler=nm.silent_handler,
-                              error_handler=nm.err_handler,
-                              )
+#    nm.WatchState()
+    # TODO make it accept both objects and opaths
+    nm.ActivateConnection(svc, conn, dev, appath)
+    # TODO (optionally) block only until a stable state is reached
     LOOP = True
 
-if options.monitor:
-    m = Monitor(bus)
+######## demo ##########
 
-def loop():
-    loop = gobject.MainLoop()
-    try:
-        loop.run()
-    except:
-        print "Loop exited"
+from networkmanager.dbusclient import DBusMio
+mio = DBusMio(dbus.SystemBus(), "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+i = mio.Introspect()
+d = mio.GetDevices()
 
+def print_state_changed(*args):
+    print "State changed:", ",".join(map(str,args))
+
+if options.demo:
+    nm = NetworkManager()
+
+# TODO: generic signal (adapt cnm monitor), print name and args
+
+    nm._connect_to_signal("StateChanged", print_state_changed)
+
+    devs = nm.GetDevices()
+    print "ActiveConnections:", nm["ActiveConnections"]
+
+    for d in devs:
+        print "\n DEVICE"
+        # TODO: find API for any object
+        d._connect_to_signal("StateChanged", print_state_changed)
+        
+    LOOP = True
+
+# TODO wrap this
 if LOOP:
-    loop()
-
-if fail:
-    sys.exit(1)
+    try:
+        print "Entering mainloop"
+        loop.run()
+    except KeyboardInterrupt:
+        print "Loop exited"
