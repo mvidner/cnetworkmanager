@@ -41,6 +41,10 @@ op.add_option("--device-info",
               help="Info about device DEV (by interface or UDI(TODO))",
               metavar="DEV")
 
+op.add_option("-a", "--ap-list", "--ap",
+              action="store_true", default=False,
+              help="List access points")
+
 op.add_option("--demo",
               action="store_true", default=False,
               help="Run a random demonstration of the API")
@@ -117,6 +121,14 @@ if options.device_info != None:
 
         else:
             dump_prop(d, "Carrier")
+
+if options.ap_list:
+    devs = nm.GetDevices()
+    for dev in filter(lambda d: d._settings_type() == "802-11-wireless", devs):
+        aap = dev["ActiveAccessPoint"]
+        for ap in dev.GetAccessPoints():
+            active = "*" if ap.object_path == aap.object_path else " "
+            print ap["HwAddress"], active, ap["Ssid"]
 
 #def is_opath(x):
 #    return is_instance(x, str) and x[0] == "/"
