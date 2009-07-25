@@ -3,6 +3,7 @@ VERSION = "0.20"
 
 import sys
 import dbus
+import dbus.service
 import _dbus_bindings
 from mkconmap import *
 from svc_settings import UserSettings
@@ -35,11 +36,12 @@ op.add_option("--wpa-pass",
 	      help="use this WPA passphrase")
 
 (options, args) = op.parse_args()
-ssid = args[0]
+try:
+    ssid = args[0]
+except:
+    ssid = None
 
-bus = dbus.SystemBus()
-
-def service_pid(name):
+def service_pid(name, bus):
     DBS = 'org.freedesktop.DBus'
     DBI = DBS
     dbo = bus.get_object(DBS, '/')
@@ -48,11 +50,17 @@ def service_pid(name):
     pid = dbi.GetConnectionUnixProcessID(owner)
     return pid
 
-NMUS = "org.freedesktop.NetworkManagerUserSettings"
-brn = bus.request_name(NMUS, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
-if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
-    print "Could not provide settings service, another applet is running (pid %s)" % service_pid(NMUS)
-    sys.exit(1)
+def request_name(name, bus):
+    brn = bus.request_name(name, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
+    if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
+        print "Could not provide service %s on %s, it is already running with pid %s" % (name, bus, service_pid(name, bus))
+        return False
+    return True
+
+#but what if there is no session bus?
+#is it just a convenience and can they start manually?
+request_name("net.vidner.CNetworkManagerSettings", dbus.SessionBus())
+request_name("org.freedesktop.NetworkManagerUserSettings", dbus.SystemBus()) or sys.exit(1)
 us = UserSettings("/org/freedesktop/NetworkManagerSettings", [])
 
 if ssid != None:
@@ -72,8 +80,24 @@ if ssid != None:
 	c = mkconmap_psk(ssid, options.wpa_pass)
         us.addCon(c)
 
+# NM upstream knows only the setting dicts, they are constructed by the applets
+# This provides a library to construct such dicts
+class CNMS(dbus.service.Object):
+    def __init__(self, bus, opath):
+        super(CNMS, self).__init__(bus, opath)
+
+    @dbus.service.method(
+        dbus_interface='org.freedesktop.NetworkManagerSettings.Factory',
+#        sender_keyword='sender',
+        in_signature='', out_signature='a{sa{sv}}')
+    def Wep(self):
+        return {}
+
+cnms = CNMS(dbus.SessionBus(), "/net/etc")
+
 try:
     print "Entering mainloop"
     loop.run()
 except KeyboardInterrupt:
     print "Loop exited"
+# FIXME when to quit? do we know if the conn is no longer needed? be killed with the rest of the system/session? allow being kicked out by another instance?
