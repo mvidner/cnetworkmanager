@@ -7,6 +7,64 @@ from util import Enum, Flags
 from func import *
 from accesspoint import AccessPoint, Mode # for Wireless
 
+class Ip4Address:
+    def __init__(self, int32):
+        self.a = int32
+    def __str__(self):
+        ret = []
+        i32 = self.a
+        for i in (1, 2, 3, 4):
+            ret.append("%d" % (i32 % 256))
+            i32 /= 256
+        return ".".join(ret)
+            
+class Ip4Config(DBusClient):
+    """
+     Properties:    
+    Addresses - aau - (read)
+    Nameservers - au - (read)
+    Domains - as - (read)
+    Routes - aau - (read)
+    """
+
+    DBusClient._add_adaptors({
+            "properties": {
+                "Addresses": identity, #TODO
+                "Nameservers": seq_adaptor(Ip4Address),
+                #"Domains": identity,
+                "Routes": identity, #TODO
+                },
+            })
+
+    SERVICE = "org.freedesktop.NetworkManager"
+    IFACE = "org.freedesktop.NetworkManager.Ip4Config"
+
+    def __init__(self, opath):
+        super(Ip4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+
+class Dhcp4Config(DBusClient):
+    """
+     Signals:
+    PropertiesChanged ( a{sv}: properties )
+     Properties:   
+    Options - a{sv} - (read)
+    """
+
+    DBusClient._add_adaptors({
+            "signals": {
+                "PropertiesChanged": (identity, [identity], {}),
+                },
+            "properties": {
+                "Options": identity,
+                },
+            })
+
+    SERVICE = "org.freedesktop.NetworkManager"
+    IFACE = "org.freedesktop.NetworkManager.Dhcp4Config"
+
+    def __init__(self, opath):
+        super(Dhcp4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+
 class Device(DBusClient):
     """networkmanager device
     
@@ -99,21 +157,10 @@ class Device(DBusClient):
         NM_SUPPORTED = 0x1
         CARRIER_DETECT = 0x2
 
-    class Ip4Address:
-        def __init__(self, int32):
-            self.a = int32
-        def __str__(self):
-            ret = []
-            i32 = self.a
-            for i in (1, 2, 3, 4):
-                ret.append("%d" % (i32 % 256))
-                i32 /= 256
-            return ".".join(ret)
-            
     @classmethod
     def _settings_type(cls):
         """The matching settings["connection"]["type"]"""
-        abstract                # FIXME pyhonize
+        AbstractMethodCalled    # no standard way for saying 'abstract'
 
     DBusClient._add_adaptors({
         "signals": {
@@ -123,8 +170,8 @@ class Device(DBusClient):
             "Capabilities": Cap,
             "Ip4Address": Ip4Address,
             "State": State,
-            "Ip4Config": identity, #TODO Ip4Config,
-            "Dhcp4Config": identity, #TODO Dhcp4Config,
+            "Ip4Config": Ip4Config,
+            "Dhcp4Config": Dhcp4Config,
             "Managed": bool,
             "DeviceType": DeviceType,
             },
