@@ -1,4 +1,5 @@
 import dbus
+import dbus.service
 from svc_connection import Connection
 
 # server analog of cApplet

@@ -1,4 +1,5 @@
 import dbus
+import os
 from settings import cSettings
 
 # server analog of cConnection

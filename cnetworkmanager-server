@@ -1,0 +1,79 @@
+#!/usr/bin/python
+VERSION = "0.20"
+
+import sys
+import dbus
+import _dbus_bindings
+from mkconmap import *
+from svc_settings import UserSettings
+
+# must be set before we ask for signals
+from dbus.mainloop.glib import DBusGMainLoop
+DBusGMainLoop(set_as_default=True)
+# for calling quit
+import gobject
+loop = gobject.MainLoop()
+
+from optparse import OptionParser
+
+op = OptionParser(version="%prog " + VERSION)
+
+op.add_option("--unprotected",
+              action="store_true", default=False,
+              help="network does not require a key")
+op.add_option("--wep-hex",
+              metavar="KEY",
+              help="use this WEP key of 26 hex digits")
+op.add_option("--wep-pass",
+              metavar="KEY",
+              help="use this WEP passphrase")
+#op.add_option("--wpa-psk-hex",
+#              metavar="KEY",
+#              help="use this WPA key of 64 hex digits")
+op.add_option("--wpa-pass",
+	      metavar="KEY",
+	      help="use this WPA passphrase")
+
+(options, args) = op.parse_args()
+ssid = args[0]
+
+bus = dbus.SystemBus()
+
+def service_pid(name):
+    DBS = 'org.freedesktop.DBus'
+    DBI = DBS
+    dbo = bus.get_object(DBS, '/')
+    dbi = dbus.Interface(dbo, DBI)
+    owner = dbi.GetNameOwner(name)
+    pid = dbi.GetConnectionUnixProcessID(owner)
+    return pid
+
+NMUS = "org.freedesktop.NetworkManagerUserSettings"
+brn = bus.request_name(NMUS, _dbus_bindings.NAME_FLAG_DO_NOT_QUEUE)
+if brn == _dbus_bindings.REQUEST_NAME_REPLY_EXISTS:
+    print "Could not provide settings service, another applet is running (pid %s)" % service_pid(NMUS)
+    sys.exit(1)
+us = UserSettings("/org/freedesktop/NetworkManagerSettings", [])
+
+if ssid != None:
+    if options.unprotected:
+        c = mkconmap_wifi(ssid)
+        us.addCon(c)
+    if options.wep_hex != None:
+        c = mkconmap_wep(ssid, options.wep_hex)
+        us.addCon(c)
+    if options.wep_pass != None:
+        c = mkconmap_wep_pass(ssid, options.wep_pass)
+        us.addCon(c)
+#    if options.wpa_psk_hex != None:
+#        c = mkconmap_psk(ssid, options.wpa_psk_hex)
+#        us.addCon(c)
+    if options.wpa_pass != None:
+	c = mkconmap_psk(ssid, options.wpa_pass)
+        us.addCon(c)
+
+try:
+    print "Entering mainloop"
+    loop.run()
+except KeyboardInterrupt:
+    print "Loop exited"
