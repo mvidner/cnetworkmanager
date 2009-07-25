@@ -35,6 +35,20 @@ class DBusMio(dbus.proxies.ProxyObject):
         callable = super(DBusMio, self).__getattr__(name)
         return functools.partial(callable, dbus_interface=iface)
 
+    # properties
+    def __getitem__(self, key):
+        iface = self.__default_interface # TODO cache
+        # TODO _introspect_property_map
+        pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
+        return pmi.Get(iface, key)
+
+    def __setitem__(self, key, value):
+        iface = self.__default_interface # TODO cache
+        # TODO _introspect_property_map
+        pmi = dbus.Interface(self._obj, "org.freedesktop.DBus.Properties")
+        return pmi.Set(iface, key, value)
+
+
 #class DBusClient(dbus.proxies.Interface):
 class DBusClient(DBusMio):
     _adaptors = {
@@ -65,19 +79,15 @@ class DBusClient(DBusMio):
 
     # properties
     def __getitem__(self, key):
-        # self._obj
-        pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
-        value = pmi.Get(self.PROP_IFACE, key)
+        value = super(DBusClient, self).__getitem__(key)
         try:
             adaptor = self._adaptors["properties"][key]
         except KeyError:
             adaptor = identity
         return adaptor(value)
 
-    def __setitem__(self, key, value):
-        pmi = dbus.Interface(self._obj, "org.freedesktop.DBus.Properties")
-        # FIXME: distinguish property marshallers/demarshallers, add here
-        return pmi.Set(self.PROP_IFACE, key, value)
+#    def __setitem__(self, key,value):
+#        TODO
 
     # signals
     def _connect_to_signal(self, signame, handler, interface=None, **kwargs):

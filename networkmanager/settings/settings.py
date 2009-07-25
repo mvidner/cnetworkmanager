@@ -21,7 +21,6 @@ class NetworkManagerSettings(DBusClient):
     # FIXME into DBusCLient ctor
     OPATH = "/org/freedesktop/NetworkManagerSettings"
     IFACE = "org.freedesktop.NetworkManagerSettings"
-    PROP_IFACE = IFACE
 
     def __init__(self, service):
         # default_interface because knetworkmanager doesnt provide introspection

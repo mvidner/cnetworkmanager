@@ -132,13 +132,10 @@ class Device(DBusClient):
 
     SERVICE = "org.freedesktop.NetworkManager"
     IFACE = "org.freedesktop.NetworkManager.Device"
-    PROP_IFACE = IFACE
 
     def __init__(self, opath):
         """Inits the base class, unlike _create"""
-#        o = dbus.proxies.ProxyObject(dbus.SystemBus(), self.SERVICE, opath)
-#        super(Device, self).__init__(o, self.IFACE)
-        super(Device, self).__init__(dbus.SystemBus(), self.SERVICE, opath)
+        super(Device, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
 
 
     _constructors = {}

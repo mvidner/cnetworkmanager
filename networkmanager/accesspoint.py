@@ -51,12 +51,9 @@ class AccessPoint(DBusClient):
 
     SERVICE = "org.freedesktop.NetworkManager"
     IFACE = "org.freedesktop.NetworkManager.AccessPoint"
-    PROP_IFACE = IFACE
 
     def __init__(self, opath):
-        super(AccessPoint, self).__init__(dbus.SystemBus(), self.SERVICE, opath)
-#        o = dbus.proxies.ProxyObject(dbus.SystemBus(), self.SERVICE, opath)
-#        super(AccessPoint, self).__init__(o, self.IFACE)
+        super(AccessPoint, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface=self.IFACE)
 
     DBusClient._add_adaptors({
             "signals": {

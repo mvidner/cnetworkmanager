@@ -23,7 +23,6 @@ class Connection(DBusClient):
     IFACE = "org.freedesktop.NetworkManagerSettings.Connection"
     # FIXME
     SECRETS_IFACE = "org.freedesktop.NetworkManagerSettings.Connection.Secrets"
-    PROP_IFACE = IFACE
 
     def __init__(self, service, opath):
         super(Connection, self).__init__(dbus.SystemBus(), service, opath, default_interface=self.IFACE)

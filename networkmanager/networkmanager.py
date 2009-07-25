@@ -40,12 +40,9 @@ class NetworkManager(DBusClient):
     SERVICE = "org.freedesktop.NetworkManager"
     OPATH = "/org/freedesktop/NetworkManager"
     IFACE = "org.freedesktop.NetworkManager"
-    PROP_IFACE = IFACE
 
     def __init__(self):
-#        o = dbus.proxies.ProxyObject(dbus.SystemBus(), self.SERVICE, self.OPATH)
-#        super(NetworkManager, self).__init__(o, self.IFACE)
-        super(NetworkManager, self).__init__(dbus.SystemBus(), self.SERVICE, self.OPATH)
+        super(NetworkManager, self).__init__(dbus.SystemBus(), self.SERVICE, self.OPATH, default_interface=self.IFACE)
 
 
     class State(Enum):
