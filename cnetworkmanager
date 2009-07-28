@@ -41,7 +41,7 @@ op.add_option("--device-info", "--di",
               help="Info about device DEV (by interface or UDI(TODO))",
               metavar="DEV")
 
-op.add_option("-a", "--ap-list", "--ap",
+op.add_option("-a", "--ap-list", "--ap", "-n", "--nets",# -n is a stopgap
               action="store_true", default=False,
               help="List access points")
 op.add_option("--ap-info", "--ai",
