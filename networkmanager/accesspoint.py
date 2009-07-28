@@ -55,14 +55,14 @@ class AccessPoint(DBusClient):
     def __init__(self, opath):
         super(AccessPoint, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface=self.IFACE)
 
-    DBusClient._add_adaptors({
-            "signals": {
-                "PropertiesChanged": (identity, [identity], {}),
+AccessPoint._add_adaptors(
+            signals = {
+                "PropertiesChanged": [void, [identity]],
                 },
-            "properties": {
-                "Flags": Flags,
-                "WpaFlags": Sec,
-                "RsnFlags": Sec,
+            properties = {
+                "Flags": AccessPoint.Flags,
+                "WpaFlags": AccessPoint.Sec,
+                "RsnFlags": AccessPoint.Sec,
                 "Ssid": compose_ocers("".join, seq_adaptor(chr)), # byte array->str
 #                "Frequency": identity,
 #                "HwAddress": identity,
@@ -70,5 +70,4 @@ class AccessPoint(DBusClient):
 #                "MaxBitrate": identity,
                 "Strength": int,
                 },
-            })
-    
+            )

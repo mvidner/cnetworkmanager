@@ -183,6 +183,7 @@ if options.demo:
 # TODO: generic signal (adapt cnm monitor), print name and args
 
     nm._connect_to_signal("StateChanged", print_state_changed)
+    nm["WirelessEnabled"] = "yes"
 
     devs = nm.GetDevices()
     print "ActiveConnections:", nm["ActiveConnections"]

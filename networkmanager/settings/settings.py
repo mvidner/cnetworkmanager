@@ -6,6 +6,8 @@ from connection import Connection
 from ..func import *
 
 
+# TODO NMS.System, not in spec
+
 class NetworkManagerSettings(DBusClient):
     """NetworkManagerSettings
 
@@ -26,18 +28,13 @@ class NetworkManagerSettings(DBusClient):
         # default_interface because knetworkmanager doesnt provide introspection
         super(NetworkManagerSettings, self).__init__(dbus.SystemBus(), service, self.OPATH, default_interface = self.IFACE)
         # need instance specific adaptors for user/system conn factories
-        self._adaptors["methods"]["ListConnections"] = seq_adaptor(self._create_connection)
+        self._add_adaptor("methods", "ListConnections", seq_adaptor(self._create_connection))
 
     def _create_connection(self, opath):
         return Connection(self.bus_name, opath)
 
-    # FIXME better API for this
-    DBusClient._add_adaptors({
-            "methods": {
-                "ListConnections": seq_adaptor(Connection), # overriden?
+NetworkManagerSettings._add_adaptors(
+            signals = {
+                "NewConnection": [void, [Connection]],
                 },
-            "signals": {
-                "NewConnection": (identity, [Connection], {}),
-                },
-            })
-
+            )

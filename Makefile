@@ -47,4 +47,7 @@ dist:
 	tar cvfz ${PACKAGE}-${VERSION}.tar.gz ${PACKAGE}-${VERSION}
 	rm -rf ${PACKAGE}-${VERSION}
 
+notes:
+	find -name \*.py | xargs grep -nH -E 'TODO|FIXME'
+
 # bikemake: serves similar purpose as automake, but is much less resource hungry

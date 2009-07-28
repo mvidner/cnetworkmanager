@@ -45,9 +45,16 @@ class DBusMio(dbus.proxies.ProxyObject):
     def __setitem__(self, key, value):
         iface = self.__default_interface # TODO cache
         # TODO _introspect_property_map
-        pmi = dbus.Interface(self._obj, "org.freedesktop.DBus.Properties")
+        pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
         return pmi.Set(iface, key, value)
 
+def mklist(x):
+    if isinstance(x, list):
+        return x
+    elif isinstance(x, tuple):
+        return [i for i in x]
+    else:
+        return [x]
 
 #class DBusClient(dbus.proxies.Interface):
 class DBusClient(DBusMio):
@@ -57,44 +64,91 @@ class DBusClient(DBusMio):
         "properties": {},
         }
 
-    # FIXME all mashed together?!
-    @staticmethod
-    def _add_adaptors(adict):
-        target = DBusClient._adaptors
-        for section in target.keys():
-            target[section].update(adict.get(section, {}))
+    
+    @classmethod
+    def _get_adaptor(cls, kind, name):
+#        print "GET", cls, kind, name
+        try:
+            return cls._adaptors[kind][name]
+        except KeyError:
+            scls = cls.__mro__[1] # can use "super"? how?
+            try:
+                return scls._get_adaptor(kind, name)
+            except AttributeError: # no _get_adaptor there
+                raise KeyError(":".join((kind, name)))
+
+    @classmethod
+    def _add_adaptor(cls, kind, name, adaptor):
+#        print "ADD", cls, kind, name, adaptor
+        adaptor = mklist(adaptor)
+        try:
+            args = adaptor[1]
+        except:
+            args = []
+        args = mklist(args)
+        try:
+            kwargs = adaptor[2]
+        except:
+            kwargs = {}
+        cls._adaptors[kind][name] = [adaptor[0], args, kwargs]
+            
+
+    @classmethod
+    def _add_adaptors(cls, *args, **kwargs):
+        """
+        either 
+        """
+        if not cls.__dict__.has_key("_adaptors"):
+            # do not use inherited attribute
+            cls._adaptors = {"methods":{}, "properties":{}, "signals":{}}
+        if len(args) != 0:
+            assert len(kwargs) == 0
+            assert len(args) == 1
+            kwargs = args[0]
+
+        for section in cls._adaptors.keys():
+            secsource = kwargs.pop(section, {})
+            for name, adaptor in secsource.iteritems():
+                cls._add_adaptor(section, name, adaptor)
+        assert len(kwargs) == 0
+#        print "AA", cls, cls._adaptors
 
     def __getattr__(self, name):
         "Wrap return values"
 
         callable = super(DBusClient, self).__getattr__(name)
         try:
-            adaptor = self._adaptors["methods"][name]
-        except KeyError:
-            adaptor = identity
-
-        if isinstance(adaptor, tuple):
+            adaptor = self._get_adaptor("methods", name)
             return callable_universal_adaptor(callable, adaptor)
-        return callable_adaptor(callable, adaptor)
+        except KeyError:
+            return callable
 
     # properties
     def __getitem__(self, key):
         value = super(DBusClient, self).__getitem__(key)
         try:
-            adaptor = self._adaptors["properties"][key]
-        except KeyError:
+            adaptor = self._get_adaptor("properties", key)[0]
+        except KeyError, IndexError:
             adaptor = identity
         return adaptor(value)
 
-#    def __setitem__(self, key,value):
-#        TODO
+    def __setitem__(self, key, value):
+        try:
+            adaptor = self._get_adaptor("properties", key)[1][0]
+        except KeyError, IndexError:
+            adaptor = identity
+        value = adaptor(value)
+        return super(DBusClient, self).__setitem__(key, value)
+
 
     # signals
+    # overrides a ProxyObject method
     def _connect_to_signal(self, signame, handler, interface=None, **kwargs):
         "Wrap signal handler, with arg adaptors"
 
         # TODO also demarshal kwargs
-        wrap_handler = callable_universal_adaptor(handler, self._adaptors["signals"][signame])
+        adaptor = self._get_adaptor("signals", signame)
+        wrap_handler = callable_universal_adaptor(handler, adaptor)
         return self.connect_to_signal(signame, wrap_handler, interface, **kwargs)
 
 #class ObjectAddress:

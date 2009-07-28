@@ -1,4 +1,3 @@
-# TODO! understand functools
 # FIXME do we need to ensure that objects get unique proxies? how?
 
 # TODO object conversions should be more automatic
@@ -7,24 +6,32 @@
 def seq_adaptor(item_adaptor):
     return lambda seq: map(item_adaptor, seq)
 
-def callable_adaptor(callable, value_adaptor):
-    return lambda *args, **kwargs: value_adaptor(callable(*args, **kwargs))
-
-
-def callable_args_demarshaller(callable, demarshaller):
-    l = lambda *args, **kwargs: callable(* map(demarshaller, args), **kwargs)
-
-
 # glossary:
 #   ocer: object converter. a function taking one object and returning on object
+
+"""
+raw value, cooked value (RV, CV)
+
+basic operations:
+wrap(RV), unwrap(CV) like marshall(CV), demarshall(RV)
+
+proxy: combines both directions
+censor, censorer: knows how to both unwrap and wrap
+(but does not do both at a time, unlike the real one)
+translator
+
+pretty, ugly -> masker
+"""
+
 def convert_seq(seq, ocers):
     """Convert seq's items using respective ocer from ocers.
 
     seq and ocers must have same length."""
 
-    assert(len(seq) == len(ocers)) # FIXME exception instead
-#    print "SEQ:", seq
-#    print "OCERS:", ocers
+    if len(seq) != len(ocers):
+        print "SEQ:", seq
+        print "OCERS:", ocers
+        raise
     return [ocer(obj) for obj, ocer in zip(seq, ocers)]
 
 def convert_dict(dict, ocer_dict):
@@ -61,3 +68,5 @@ def compose_ocers(outer, inner):
 def identity(x):
     return x
 
+def void(x):
+    return None

@@ -10,6 +10,16 @@ from func import *
 SYSTEM_SERVICE = "org.freedesktop.NetworkManagerSystemSettings"
 USER_SERVICE = "org.freedesktop.NetworkManagerUserSettings"
 
+ActiveConnection = identity # TODO
+
+# gratuitous convertor to test writable properties
+def english_to_bool(v):
+    if v == "yes":
+        return True
+    elif v == "no":
+        return False
+    return v
+
 class NetworkManager(DBusClient):
     """networkmanager
     
@@ -53,20 +63,20 @@ class NetworkManager(DBusClient):
         DISCONNECTED = 4
 
     "TODO find a good term for 'adaptor'"
-    _adaptors = {
-        "methods": {
+NetworkManager._add_adaptors(
+        methods = {
             "GetDevices": seq_adaptor(Device._create),
-            "ActivateConnection": (identity, [identity, object_path, object_path, object_path], {}),
-            "DeactivateConnection": (identity, [object_path], {})
+            "ActivateConnection": [ActiveConnection, [identity, object_path, object_path, object_path]],
+            "DeactivateConnection": [void, [object_path]],
             },
-        "properties": {
-            "State": State,
-            "WirelessEnabled": bool,
+        properties = {
+            "State": NetworkManager.State,
+            "WirelessEnabled": [bool, english_to_bool],
             "WirelessHardwareEnabled": bool,
-            "ActiveConnections": seq_adaptor(identity), # TODO
+            "ActiveConnections": seq_adaptor(ActiveConnection),
             },
-        "signals": {
-            "StateChanged": (identity, [State], {}),
+        signals = {
+            "StateChanged": [void, [NetworkManager.State]],
             },
-        }
+        )
 

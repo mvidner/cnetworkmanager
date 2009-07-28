@@ -13,7 +13,7 @@ class Ip4Address:
     def __str__(self):
         ret = []
         i32 = self.a
-        for i in (1, 2, 3, 4):
+        for i in range(4):
             ret.append("%d" % (i32 % 256))
             i32 /= 256
         return ".".join(ret)
@@ -27,20 +27,20 @@ class Ip4Config(DBusClient):
     Routes - aau - (read)
     """
 
-    DBusClient._add_adaptors({
-            "properties": {
-                "Addresses": identity, #TODO
-                "Nameservers": seq_adaptor(Ip4Address),
-                #"Domains": identity,
-                "Routes": identity, #TODO
-                },
-            })
-
     SERVICE = "org.freedesktop.NetworkManager"
     IFACE = "org.freedesktop.NetworkManager.Ip4Config"
 
     def __init__(self, opath):
         super(Ip4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+
+Ip4Config._add_adaptors(
+            properties = {
+                "Addresses": identity, #TODO
+                "Nameservers": seq_adaptor(Ip4Address),
+                #"Domains": identity,
+                "Routes": identity, #TODO
+                },
+            )
 
 class Dhcp4Config(DBusClient):
     """
@@ -50,20 +50,20 @@ class Dhcp4Config(DBusClient):
     Options - a{sv} - (read)
     """
 
-    DBusClient._add_adaptors({
-            "signals": {
-                "PropertiesChanged": (identity, [identity], {}),
-                },
-            "properties": {
-                "Options": identity,
-                },
-            })
-
     SERVICE = "org.freedesktop.NetworkManager"
     IFACE = "org.freedesktop.NetworkManager.Dhcp4Config"
 
     def __init__(self, opath):
         super(Dhcp4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+
+Dhcp4Config._add_adaptors(
+            signals = {
+                "PropertiesChanged": [void, [identity]],
+                },
+            properties = {
+                "Options": identity,
+                },
+            )
 
 class Device(DBusClient):
     """networkmanager device
@@ -162,21 +162,6 @@ class Device(DBusClient):
         """The matching settings["connection"]["type"]"""
         AbstractMethodCalled    # no standard way for saying 'abstract'
 
-    DBusClient._add_adaptors({
-        "signals": {
-            "StateChanged": (identity, [State, State, StateReason], {})
-            },
-        "properties": {
-            "Capabilities": Cap,
-            "Ip4Address": Ip4Address,
-            "State": State,
-            "Ip4Config": Ip4Config,
-            "Dhcp4Config": Dhcp4Config,
-            "Managed": bool,
-            "DeviceType": DeviceType,
-            },
-        })
-
     SERVICE = "org.freedesktop.NetworkManager"
     IFACE = "org.freedesktop.NetworkManager.Device"
 
@@ -210,6 +195,21 @@ class Device(DBusClient):
 #    def __repr__(self):
 #        return "DEVICE " + self.object_path
 
+Device._add_adaptors(
+        signals = {
+            "StateChanged": [void, [Device.State, Device.State, Device.StateReason]],
+            },
+        properties = {
+            "Capabilities": Device.Cap,
+            "Ip4Address": Ip4Address,
+            "State": Device.State,
+            "Ip4Config": Ip4Config,
+            "Dhcp4Config": Dhcp4Config,
+            "Managed": bool,
+            "DeviceType": Device.DeviceType,
+            },
+        )
+
 # FIXME make them separate to enable plugins
 class Wired(Device):
     "TODO docstring, move them to the class"
@@ -221,16 +221,16 @@ class Wired(Device):
     # FIXME but also use parent iface
     IFACE = "org.freedesktop.NetworkManager.Device"
     # FIXME how to get parent adaptors?
-    DBusClient._add_adaptors({
-            "signals": {
-                "PropertiesChanged": (identity, [identity], {})
+Wired._add_adaptors(
+            signals = {
+                "PropertiesChanged": [void, [identity]],
                 },
-            "properties": {
+            properties = {
 #                "HwAddress": identity,
 #                "Speed": identity,
                 "Carrier": bool,
                 },
-            })
+            )
 
 Device._register_constructor(Device.DeviceType.ETHERNET, Wired)
 
@@ -250,20 +250,20 @@ class Wireless(Device):
     def _settings_type(cls):
         return "802-11-wireless"
 
-    DBusClient._add_adaptors({
-        "methods": {
+Wireless._add_adaptors(
+        methods = {
             "GetAccessPoints": seq_adaptor(AccessPoint),
             },
-        "signals": {
-            "PropertiesChanged": (identity, [identity], {}),
-            "AccessPointAdded": (identity, [AccessPoint], {}),
-            "AccessPointRemoved": (identity, [AccessPoint], {}),
+        signals = {
+            "PropertiesChanged": [void, [identity]],
+            "AccessPointAdded": [void, [AccessPoint]],
+            "AccessPointRemoved": [void, [AccessPoint]],
             },
-        "properties": {
+        properties = {
             "Mode": Mode,
             "ActiveAccessPoint": AccessPoint,
-            "WirelessCapabilities": DeviceCap,
+            "WirelessCapabilities": Wireless.DeviceCap,
             },
-        })
+        )
 
 Device._register_constructor(Device.DeviceType.WIRELESS, Wireless)
