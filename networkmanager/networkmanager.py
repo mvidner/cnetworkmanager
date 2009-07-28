@@ -3,14 +3,13 @@
 import dbus
 from dbusclient import DBusClient, object_path
 from device import Device
+from activeconnection import ActiveConnection
 from util import Enum
 from func import *
 
 # need better/shorter names? or hide them?
 SYSTEM_SERVICE = "org.freedesktop.NetworkManagerSystemSettings"
 USER_SERVICE = "org.freedesktop.NetworkManagerUserSettings"
-
-ActiveConnection = identity # TODO
 
 # gratuitous convertor to test writable properties
 def english_to_bool(v):

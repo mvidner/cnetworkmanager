@@ -45,6 +45,17 @@ op.add_option("-a", "--ap-list", "--ap",
               action="store_true", default=False,
               help="List access points")
 
+op.add_option("-u", "--usrcon",
+              action="store_true", default=False,
+              help="List user connection settings")
+op.add_option("-s", "--syscon",
+              action="store_true", default=False,
+              help="List system connection settings")
+
+op.add_option("-c", "--actcon",
+              action="store_true", default=False,
+              help="List active connections")
+
 op.add_option("--demo",
               action="store_true", default=False,
               help="Run a random demonstration of the API")
@@ -149,6 +160,34 @@ def get_connection_devtype(conn):
     cs = conn.GetSettings()
     return cs["connection"]["type"]
 
+def list_conections(svc):
+    acs = nm["ActiveConnections"]
+    acos = map(lambda a: a["Connection"].object_path, acs)
+
+    applet = NetworkManagerSettings(svc)
+    for conn in applet.ListConnections():
+        cs = conn.GetSettings()
+        active = "*" if conn.object_path in acos else " "
+        print active, cs["connection"]["id"], cs["connection"]["type"]
+
+if options.usrcon:
+    list_conections(USER_SERVICE)
+if options.syscon:
+    list_conections(SYSTEM_SERVICE)
+
+# this shows we do need to add __str__ to the objects
+if options.actcon:
+    acs = nm["ActiveConnections"]
+    for ac in acs:
+        cid = ac["Connection"].GetSettings()["connection"]["id"]
+        try:
+            apmac = ac["SpecificObject"]["HwAddress"]
+        except:                 # no AP for wired. TODO figure out "/" object
+            apmac = ""
+        devs = ", ".join(map(lambda d: d["Interface"], ac["Devices"]))
+        hdr = "(has default route)" if ac["Default"] else ""
+        print ac["State"], cid, apmac, devs, hdr
+
 if options.activate_connection != None:
     (svc, conpath, devpath, appath) = options.activate_connection.split(',')
     if svc == "" or svc == "user":
@@ -186,7 +225,6 @@ if options.demo:
     nm["WirelessEnabled"] = "yes"
 
     devs = nm.GetDevices()
-    print "ActiveConnections:", nm["ActiveConnections"]
 
     for d in devs:
         print "\n DEVICE"
