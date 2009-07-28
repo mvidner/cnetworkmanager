@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import dbus
 from dbusclient import DBusClient
+from dbusclient.func import *
 import util
-from func import *
 
 class Mode(util.Enum):
     UNKNOWN = 0

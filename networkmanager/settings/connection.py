@@ -2,7 +2,7 @@
 
 import dbus
 from ..dbusclient import DBusClient
-#from ..func import *
+#from ..dbusclient.func import *
 
 
 class Connection(DBusClient):

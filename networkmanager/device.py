@@ -3,8 +3,8 @@
 import dbus
 #from networkmanager import NetworkManager
 from dbusclient import DBusClient
+from dbusclient.func import *
 from util import Enum, Flags
-from func import *
 from accesspoint import AccessPoint, Mode # for Wireless
 
 class Ip4Address:

@@ -2,10 +2,10 @@
 
 import dbus
 from dbusclient import DBusClient, object_path
+from dbusclient.func import *
 from device import Device
 from activeconnection import ActiveConnection
 from util import Enum
-from func import *
 
 # gratuitous convertor to test writable properties
 def english_to_bool(v):

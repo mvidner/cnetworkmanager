@@ -216,7 +216,7 @@ if options.activate_connection != None:
 
 ######## demo ##########
 
-from networkmanager.dbusclient import DBusMio
+from dbusclient import DBusMio
 mio = DBusMio(dbus.SystemBus(), "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
 i = mio.Introspect()
 d = mio.GetDevices()

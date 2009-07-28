@@ -2,8 +2,8 @@
 
 import dbus
 from ..dbusclient import DBusClient
+from ..dbusclient.func import *
 from connection import Connection
-from ..func import *
 
 
 # need better/shorter names? or hide them?
