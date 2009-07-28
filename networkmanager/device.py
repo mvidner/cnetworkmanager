@@ -18,7 +18,7 @@ class Ip4Address:
             i32 /= 256
         return ".".join(ret)
             
-class Ip4Config(DBusClient):
+class IP4Config(DBusClient):
     """
      Properties:    
     Addresses - aau - (read)
@@ -28,12 +28,12 @@ class Ip4Config(DBusClient):
     """
 
     SERVICE = "org.freedesktop.NetworkManager"
-    IFACE = "org.freedesktop.NetworkManager.Ip4Config"
+    IFACE = "org.freedesktop.NetworkManager.IP4Config"
 
     def __init__(self, opath):
-        super(Ip4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+        super(IP4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
 
-Ip4Config._add_adaptors(
+IP4Config._add_adaptors(
             properties = {
                 "Addresses": identity, #TODO
                 "Nameservers": seq_adaptor(Ip4Address),
@@ -42,7 +42,7 @@ Ip4Config._add_adaptors(
                 },
             )
 
-class Dhcp4Config(DBusClient):
+class DHCP4Config(DBusClient):
     """
      Signals:
     PropertiesChanged ( a{sv}: properties )
@@ -51,12 +51,12 @@ class Dhcp4Config(DBusClient):
     """
 
     SERVICE = "org.freedesktop.NetworkManager"
-    IFACE = "org.freedesktop.NetworkManager.Dhcp4Config"
+    IFACE = "org.freedesktop.NetworkManager.DHCP4Config"
 
     def __init__(self, opath):
-        super(Dhcp4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+        super(DHCP4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
 
-Dhcp4Config._add_adaptors(
+DHCP4Config._add_adaptors(
             signals = {
                 "PropertiesChanged": [void, [identity]],
                 },
@@ -203,8 +203,8 @@ Device._add_adaptors(
             "Capabilities": Device.Cap,
             "Ip4Address": Ip4Address,
             "State": Device.State,
-            "Ip4Config": Ip4Config,
-            "Dhcp4Config": Dhcp4Config,
+            "Ip4Config": IP4Config,
+            "Dhcp4Config": DHCP4Config,
             "Managed": bool,
             "DeviceType": Device.DeviceType,
             },
