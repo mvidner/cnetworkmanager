@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import dbus
-#from networkmanager import NetworkManager
 from dbusclient import DBusClient
 import util
 from func import *
