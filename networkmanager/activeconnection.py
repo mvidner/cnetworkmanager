@@ -3,7 +3,7 @@
 import dbus
 from dbusclient import DBusClient, object_path
 from dbusclient.func import *
-from settings.connection import Connection
+from applet import Connection
 from device import Device
 from accesspoint import AccessPoint
 from util import Enum

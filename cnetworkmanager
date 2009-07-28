@@ -4,7 +4,7 @@ VERSION = "0.20"
 import sys
 import dbus
 from networkmanager import NetworkManager
-from networkmanager.settings.settings import NetworkManagerSettings, SYSTEM_SERVICE, USER_SERVICE
+from networkmanager.applet import NetworkManagerSettings, SYSTEM_SERVICE, USER_SERVICE
 
 # must be set before we ask for signals
 from dbus.mainloop.glib import DBusGMainLoop
