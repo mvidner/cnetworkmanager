@@ -6,6 +6,10 @@ from connection import Connection
 from ..func import *
 
 
+# need better/shorter names? or hide them?
+SYSTEM_SERVICE = "org.freedesktop.NetworkManagerSystemSettings"
+USER_SERVICE = "org.freedesktop.NetworkManagerUserSettings"
+
 # TODO NMS.System, not in spec
 
 class NetworkManagerSettings(DBusClient):
