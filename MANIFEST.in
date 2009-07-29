@@ -1,1 +1,3 @@
-include COPYING HACKING
+include Makefile
+include COPYING HACKING NEWS
+include cnetworkmanager.conf

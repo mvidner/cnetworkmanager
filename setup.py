@@ -3,7 +3,7 @@
 
 from distutils.core import setup
 setup(name = 'cnetworkmanager',
-      version = '0.20', # networkmanager.__version__
+      version = '0.20',
       description = 'NetworkManager library and CLI',
       author = 'Martin Vidner',
       author_email = 'martin@vidner.net',
@@ -15,7 +15,9 @@ setup(name = 'cnetworkmanager',
                   'networkmanager.applet',
                   'networkmanager.applet.service',
                   'dbusclient'],
-      scripts = ['cnetworkmanager'],
-      # data_files = TODO from Makefile
+      scripts = ['cnetworkmanager'], # -server is not ready yet
+      data_files = [
+        ('/etc/dbus-1/system.d', ['cnetworkmanager.conf']),
+        ]
       # classifiers =
       )

@@ -18,18 +18,20 @@
 
 
 Name:           cnetworkmanager
-Version:        0.8.4
+Version:        0.20
 Release:        1
 Summary:        Command-line client for NetworkManager
 License:        GPL v2 or later
 Url:            http://vidner.net/martin/software/cnetworkmanager/
 Group:          Productivity/Networking/System
-BuildRequires:  dbus-1
+# build time reqs same as run time because we run tests
+BuildRequires:  dbus-1-python python-gobject2
 Requires:       dbus-1-python python-gobject2
 Provides:       NetworkManager-client
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
 Source:         %{name}-%{version}.tar.gz
+%{py_requires}
 
 %description
 Cnetworkmanager is a command-line client for NetworkManager, intended
@@ -42,26 +44,22 @@ to supplement and replace the GUI applets.
 #% patch -p1
 
 %build
-make PREFIX=/usr
+python setup.py build
 
 %install
-make install DESTDIR=$RPM_BUILD_ROOT PREFIX=/usr sysconfdir=/etc
+python setup.py install --prefix=%{_prefix} --root=$RPM_BUILD_ROOT --record-rpm=INSTALLED_FILES
+# mark the /etc files as config
+sed -i 's,^/etc,%config /etc,' INSTALLED_FILES
 
 %check
-# nothing
+make check-nonm
 
 %clean
 rm -rf %{buildroot}
 
-%files
+%files -f  INSTALLED_FILES
 %defattr(-,root,root)
-/usr/bin/cnetworkmanager
-%dir /usr/share/cnetworkmanager
-/usr/share/cnetworkmanager/cnetworkmanager
-/usr/share/cnetworkmanager/pbkdf2.py
-/etc/dbus-1/system.d/cnetworkmanager.conf
-%doc /usr/share/doc/packages/cnetworkmanager
-
+%doc README COPYING HACKING NEWS
 %changelog
 * Sat Mar 21 2009 mvidner@suse.cz
 - v0.8.4
