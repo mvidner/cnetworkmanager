@@ -1,13 +1,13 @@
 import dbus
 import os
-from settings import cSettings
+from ..settings import Settings
 
 # server analog of cConnection
 class Connection(dbus.service.Object):
     def __init__(self, opath, conmap):
         bus = dbus.SystemBus()
         dbus.service.Object.__init__(self, bus, opath)
-        self.settings = cSettings(conmap)
+        self.settings = Settings(conmap)
 
     @dbus.service.method(dbus_interface='org.freedesktop.NetworkManagerSettings.Connection',
                          sender_keyword='sender',

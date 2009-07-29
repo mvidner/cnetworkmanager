@@ -11,7 +11,10 @@ setup(name = 'cnetworkmanager',
       license = 'GPL v2 or later',
       #platform = 
       requires = ['dbus'],
-      packages = ['networkmanager', 'networkmanager.applet', 'dbusclient'],
+      packages = ['networkmanager',
+                  'networkmanager.applet',
+                  'networkmanager.applet.service',
+                  'dbusclient'],
       scripts = ['cnetworkmanager'],
       # data_files = TODO from Makefile
       # classifiers =

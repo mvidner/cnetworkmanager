@@ -4,8 +4,8 @@ VERSION = "0.20"
 import sys
 import dbus
 import _dbus_bindings
-from mkconmap import *
-from svc_settings import UserSettings
+from networkmanager.applet.service import UserSettings
+from networkmanager.applet.service.mkconmap import *
 
 # must be set before we ask for signals
 from dbus.mainloop.glib import DBusGMainLoop

@@ -1,6 +1,6 @@
 import dbus
 import dbus.service
-from svc_connection import Connection
+from connection import Connection
 
 # server analog of cApplet
 class UserSettings(dbus.service.Object):

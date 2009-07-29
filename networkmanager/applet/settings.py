@@ -12,7 +12,7 @@ IW_AUTH_ALG_OPEN_SYSTEM   = 0x00000001
 IW_AUTH_ALG_SHARED_KEY    = 0x00000002
 IW_AUTH_ALG_LEAP          = 0x00000004
 
-class cSettings:
+class Settings:
     def __init__(self, conmap):
         #print "INIT", conmap
         self.conmap = conmap
