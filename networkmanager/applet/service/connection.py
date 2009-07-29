@@ -5,6 +5,7 @@ from ..settings import Settings
 # server analog of cConnection
 class Connection(dbus.service.Object):
     def __init__(self, opath, conmap):
+        assert isinstance(conmap, dict)
         bus = dbus.SystemBus()
         dbus.service.Object.__init__(self, bus, opath)
         self.settings = Settings(conmap)

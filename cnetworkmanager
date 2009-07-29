@@ -6,6 +6,8 @@ import dbus
 from networkmanager import NetworkManager
 from networkmanager.monitor import Monitor
 from networkmanager.applet import NetworkManagerSettings, SYSTEM_SERVICE, USER_SERVICE
+from networkmanager.applet.service import NetworkManagerUserSettings
+import networkmanager.applet.settings as settings
 
 # must be set before we ask for signals
 from dbus.mainloop.glib import DBusGMainLoop
@@ -69,6 +71,25 @@ op.add_option("--activate-connection",
 op.add_option("-m", "--monitor",
               action="store_true", default=False,
               help="loop to show dbus signals")
+
+op.add_option("-C", "--connect",
+              help="Connect to a wireless network SSID (creating the configuration using the key options below)",
+              metavar="SSID")
+op.add_option("--unprotected",
+              action="store_true", default=False,
+              help="network does not require a key")
+op.add_option("--wep-hex",
+              metavar="KEY",
+              help="use this WEP key of 26 hex digits")
+op.add_option("--wep-pass",
+              metavar="KEY",
+              help="use this WEP passphrase")
+op.add_option("--wpa-psk-hex",
+              metavar="KEY",
+              help="use this WPA key of 64 hex digits")
+op.add_option("--wpa-pass",
+	      metavar="KEY",
+	      help="use this WPA passphrase")
 
 (options, args) = op.parse_args()
 
@@ -200,6 +221,45 @@ if options.actcon:
         hdr = "(has default route)" if ac["Default"] else ""
         print ac["State"], cid, apmac, devs, hdr
 
+if options.monitor:
+    m = Monitor()
+    LOOP = True
+
+if options.connect != None:
+    ssid = options.connect
+    try:
+        us = NetworkManagerUserSettings([]) # request_name may fail
+    except dbus.exceptions.NameExistsException, e:
+        print "Another applet is running:", e
+        sys.exit(1)
+
+    c = None
+    if options.unprotected:
+        c = settings.WiFi(ssid)
+    if options.wep_hex != None:
+        c = settings.Wep(ssid, "", options.wep_hex)
+    if options.wep_pass != None:
+        c = settings.Wep(ssid, options.wep_pass)
+    if options.wpa_psk_hex != None:
+        c = settings.WpaPsk(ssid, "", options.wpa_psk_hex)
+    if options.wpa_pass != None:
+        c = settings.WpaPsk(ssid, options.wpa_pass)
+    if c == None:
+        print "Error, connection settings not specified"
+        sys.exit(1)
+
+    svc = USER_SERVICE
+    svc_conn = us.addCon(c.conmap)
+    hint = svc_conn.settings["connection"]["type"]
+    dev = get_device("", hint)
+    appath = "/"
+    # must be async because ourselves are providing the service
+    dummy_handler = lambda *args: None
+    nm.ActivateConnection(svc, svc_conn, dev, appath,
+                          reply_handler=dummy_handler,
+                          error_handler=dummy_handler)
+    LOOP = True
+
 if options.activate_connection != None:
     (svc, conpath, devpath, appath) = options.activate_connection.split(',')
     if svc == "" or svc == "user":
@@ -218,9 +278,6 @@ if options.activate_connection != None:
     # TODO (optionally) block only until a stable state is reached
     LOOP = True
 
-if options.monitor:
-    m = Monitor()
-    LOOP = True
 
 ######## demo ##########
 
@@ -248,6 +305,7 @@ if options.demo:
         d._connect_to_signal("StateChanged", print_state_changed)
         
     LOOP = True
+######## demo end ##########
 
 # TODO wrap this
 if LOOP:
