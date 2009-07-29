@@ -1,3 +1,17 @@
+0.20, Wed 2009-07-29
+Major rewrite:
+Created a library wrapping the NM DBus API.
+Created a generic library wrapping python-dbus.
+  (both libraries are still quite messy)
+Dropped support for NM 0.6.
+  (the last trace is in the 'breakup' branch)
+Connection setting:
+  --activate-connection for system settings or another applet
+  --connect for exporting a transient connection
+  knetworkmanager (KDE3) config reading dropped
+Added a (basic) testsuite.
+Switched to distutils.
+
 0.8.4, Sat 2009-03-21
 New: When connecting (-C), monitor the NM connection state.
 Fix: RPM packaging: consistent PREFIX (bnc#485413), owning pkgdatadir.

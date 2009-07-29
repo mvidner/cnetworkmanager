@@ -1,31 +1,52 @@
-[10]Cnetworkmanager is a command-line client for [11]NetworkManager,
-intended to supplement and replace the GUI applets. So far it is a single
-python script. What is new in version 0.7.1:
+* What
 
-  * it does not need a configuration file anymore:
-    cnetworkmanager -C publicnet
-    cnetworkmanager -C myessid --wep-hex 112234445566778899aabbccdd
-    cnetworkmanager -C moria   --wep-pass SpeakFriendAndEnter  # 0.8
-    cnetworkmanager -C another --wpa-psk-hex \
-      112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00
-  * it works with NM 0.6 (tested on [12]Ubuntu 8.04 Hardy and a
-    pre-release [13]OLPC) in addition to the older support for NM 0.7pre
-    (tested on [14]openSUSE 11.0)
+cnetworkmanager is a command-line client for NetworkManager, intended to
+supplement and replace the GUI applets.
 
-What is still left to do:
+It is licensed under the GPL v2 or later.
 
-  * sooner:
-       * reading the configuration stored by the GNOME nm-applet
-       * possibility to quit after a connection is established
+* Where
 
-  * later:
-       * more encryption schemes (WPA2?)
-       * more connection types (dial-up, VPN)
+http://vidner.net/martin/software/cnetworkmanager/
+http://repo.or.cz/w/cnetworkmanager.git
 
-Links:
-9. http://mvidner.blogspot.com/2008/07/cnetworkmanager-071.html
-10. http://vidner.net/martin/software/cnetworkmanager/
-11. http://www.gnome.org/projects/NetworkManager/
-12. http://www.ubuntu.com/
-13. http://laptop.org/
-14. http://software.opensuse.org/
+* Screenshot (from 0.20)
+
+$ cnetworkmanager -h
+Usage: cnetworkmanager [options]
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -w BOOL, --wifi=BOOL  Enable or disable wireless
+  -o BOOL, --online=BOOL
+                        Enable or disable network at all
+  --state               Print the NM state
+  --whe, --wireless-hardware-enabled
+                        Print whether the WiFi is enabled
+  -d, --device-list, --dev
+                        List devices
+  --device-info=DEV, --di=DEV
+                        Info about device DEV (by interface or UDI(TODO))
+  -a, -n, --ap-list, --ap, --nets
+                        List access points
+  --ap-info=AP, --ai=AP
+                        Info about access point AP (by hw address or
+                        UDI(TODO))
+  -u, --usrcon          List user connection settings
+  -s, --syscon          List system connection settings
+  -c, --actcon          List active connections
+  --demo                Run a random demonstration of the API
+  --activate-connection=[KIND],ID,[DEV],[APMAC]
+                        activate the KIND(user/system) connection ID on device
+                        DEV using APMAC.
+  -m, --monitor         loop to show dbus signals
+  -C SSID, --connect=SSID
+                        Connect to a wireless network SSID (creating the
+                        configuration using the key options below)
+  --unprotected         network does not require a key
+  --wep-hex=KEY         use this WEP key of 26 hex digits
+  --wep-pass=KEY        use this WEP passphrase
+  --wpa-psk-hex=KEY     use this WPA key of 64 hex digits
+  --wpa-pass=KEY        use this WPA passphrase
+

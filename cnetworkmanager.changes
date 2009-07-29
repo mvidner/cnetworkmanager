@@ -1,4 +1,21 @@
 -------------------------------------------------------------------
+Wed Jul 29 17:40:00 CEST 2009 - mvidner@suse.cz
+
+- v0.20
+- Major rewrite:
+- Created a library wrapping the NM DBus API.
+- Created a generic library wrapping python-dbus.
+    (both libraries are still quite messy)
+- Dropped support for NM 0.6.
+    (the last trace is in the 'breakup' branch)
+- Connection setting:
+    --activate-connection for system settings or another applet
+    --connect for exporting a transient connection
+    knetworkmanager (KDE3) config reading dropped
+- Added a (basic) testsuite.
+- Switched to distutils.
+
+-------------------------------------------------------------------
 Sat Mar 21 07:18:00 CET 2009 - mvidner@suse.cz
 
 - v0.8.4
