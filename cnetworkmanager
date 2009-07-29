@@ -2,6 +2,7 @@
 VERSION = "0.20"
 
 import sys
+import time
 import dbus
 from networkmanager import NetworkManager
 from networkmanager.monitor import Monitor
@@ -225,6 +226,10 @@ if options.monitor:
     m = Monitor()
     LOOP = True
 
+def print_state_changed(*args):
+    print time.strftime("(%X)"),
+    print "State:", ", ".join(map(str,args))
+
 if options.connect != None:
     ssid = options.connect
     try:
@@ -253,6 +258,7 @@ if options.connect != None:
     hint = svc_conn.settings["connection"]["type"]
     dev = get_device("", hint)
     appath = "/"
+    nm._connect_to_signal("StateChanged", print_state_changed)
     # must be async because ourselves are providing the service
     dummy_handler = lambda *args: None
     nm.ActivateConnection(svc, svc_conn, dev, appath,
@@ -272,7 +278,7 @@ if options.activate_connection != None:
     dev = get_device(devpath, hint)
     if appath == "":
         appath = "/"
-#    nm.WatchState()
+    nm._connect_to_signal("StateChanged", print_state_changed)
     # TODO make it accept both objects and opaths
     nm.ActivateConnection(svc, conn, dev, appath)
     # TODO (optionally) block only until a stable state is reached
@@ -286,15 +292,11 @@ mio = DBusMio(dbus.SystemBus(), "org.freedesktop.NetworkManager", "/org/freedesk
 i = mio.Introspect()
 d = mio.GetDevices()
 
-def print_state_changed(*args):
-    print "State changed:", ",".join(map(str,args))
-
 if options.demo:
     nm = NetworkManager()
 
 # TODO: generic signal (adapt cnm monitor), print name and args
 
-    nm._connect_to_signal("StateChanged", print_state_changed)
     nm["WirelessEnabled"] = "yes"
 
     devs = nm.GetDevices()
