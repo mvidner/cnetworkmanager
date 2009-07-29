@@ -67,8 +67,8 @@ op.add_option("--demo",
               action="store_true", default=False,
               help="Run a random demonstration of the API")
 op.add_option("--activate-connection",
-              help="raw API: activate the KIND(user/system) connection CON on device DEV using AP",
-              metavar="[KIND],CON,DEV,[AP]")
+              help="activate the KIND(user/system) connection ID on device DEV using APMAC.",
+              metavar="[KIND],ID,[DEV],[APMAC]")
 op.add_option("-m", "--monitor",
               action="store_true", default=False,
               help="loop to show dbus signals")
