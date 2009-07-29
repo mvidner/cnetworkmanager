@@ -1,10 +1,11 @@
-from monitor_base import MonitorBase
-from manager import cNM
-from device07 import cDevice_07
+import dbus
+import dbusclient.monitor
+import networkmanager
+import device
 
-class Monitor(MonitorBase):
-    def __init__(self, bus):
-        MonitorBase.__init__(self, bus)
+class Monitor(dbusclient.monitor.Monitor):
+    def __init__(self):
+        super(Monitor, self).__init__(dbus.SystemBus())
 
         self.watch(
             self.propc_h,
@@ -40,16 +41,16 @@ class Monitor(MonitorBase):
     def nmd_sc_h(self, *args, **kwargs):
         opath = kwargs["path"]
         (new, old, reason) = args
-        news = cDevice_07.NM_DEVICE_STATE[new]
-        olds = cDevice_07.NM_DEVICE_STATE[old]
+        news = device.Device.State(new)
+        olds = device.Device.State(old)
         reasons = ""
         if reason != 0:
-            reasons = "reason %d" % reason
-        print "\tDevice State %s\t(%s, was %s%s)" % (news, opath, olds.lower(), reasons)
+            reasons = " reason %d" % reason
+        print "\tDevice State %s\t(%s, was %s%s)" % (news, opath, olds, reasons)
 
     def nm_sc_h(self, *args, **kwargs):
         s = args[0]
-        ss = cNM.NM_STATE[s]
+        ss = networkmanager.NetworkManager.State(s)
         print "\tNM State:", ss
 
     def propc_h(self, *args, **kwargs):

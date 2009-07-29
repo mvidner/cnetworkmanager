@@ -1,6 +1,6 @@
 import string
 
-class MonitorBase:
+class Monitor(object):
     def __init__(self, bus):
         self.bus = bus
 

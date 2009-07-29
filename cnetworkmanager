@@ -4,6 +4,7 @@ VERSION = "0.20"
 import sys
 import dbus
 from networkmanager import NetworkManager
+from networkmanager.monitor import Monitor
 from networkmanager.applet import NetworkManagerSettings, SYSTEM_SERVICE, USER_SERVICE
 
 # must be set before we ask for signals
@@ -65,6 +66,9 @@ op.add_option("--demo",
 op.add_option("--activate-connection",
               help="raw API: activate the KIND(user/system) connection CON on device DEV using AP",
               metavar="[KIND],CON,DEV,[AP]")
+op.add_option("-m", "--monitor",
+              action="store_true", default=False,
+              help="loop to show dbus signals")
 
 (options, args) = op.parse_args()
 
@@ -212,6 +216,10 @@ if options.activate_connection != None:
     # TODO make it accept both objects and opaths
     nm.ActivateConnection(svc, conn, dev, appath)
     # TODO (optionally) block only until a stable state is reached
+    LOOP = True
+
+if options.monitor:
+    m = Monitor()
     LOOP = True
 
 ######## demo ##########
