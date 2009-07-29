@@ -27,6 +27,7 @@ Group:          Productivity/Networking/System
 # build time reqs same as run time because we run tests
 BuildRequires:  dbus-1-python python-gobject2
 Requires:       dbus-1-python python-gobject2
+Requires:	NetworkManager >= 0.7.0
 Provides:       NetworkManager-client
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
