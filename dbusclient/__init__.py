@@ -119,7 +119,7 @@ class DBusClient(DBusMio):
         callable = super(DBusClient, self).__getattr__(name)
         try:
             adaptor = self._get_adaptor("methods", name)
-            return callable_universal_adaptor(callable, adaptor)
+            return async_callable_universal_adaptor(callable, adaptor)
         except KeyError:
             return callable
 
