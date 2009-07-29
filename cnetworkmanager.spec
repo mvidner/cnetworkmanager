@@ -60,7 +60,6 @@ rm -rf %{buildroot}
 /usr/share/cnetworkmanager/cnetworkmanager
 /usr/share/cnetworkmanager/pbkdf2.py
 /etc/dbus-1/system.d/cnetworkmanager.conf
-/etc/dbus-1/system.d/cnetworkmanager-06.conf
 %doc /usr/share/doc/packages/cnetworkmanager
 
 %changelog
