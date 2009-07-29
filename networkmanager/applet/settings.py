@@ -89,7 +89,7 @@ class WiFi(Settings):
     def __init__(self, ssid):
         conmap = {
             'connection': {
-                'id': '_cnm_handcrafted_',
+                'id': ssid,
                 'uuid': str(uuid.uuid1()), # new in oS 11.1
                 'type': '802-11-wireless',
                 },
