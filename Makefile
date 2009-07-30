@@ -2,10 +2,11 @@ SETUP=python setup.py
 all:
 	$(SETUP) build
 
-check:
-	for T in test/test*.py; do $$T; done
+check: check-nonm
+	for T in test/test02*.py; do $$T; done
 
 check-nonm:
+	for T in networkmanager/util.py; do python $$T; done
 	for T in test/test01*.py; do $$T; done
 
 install:
