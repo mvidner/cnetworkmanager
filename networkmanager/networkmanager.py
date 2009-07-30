@@ -58,20 +58,19 @@ class NetworkManager(DBusClient):
         DISCONNECTED = 4
 
     "TODO find a good term for 'adaptor'"
-NetworkManager._add_adaptors(
-        methods = {
-            "GetDevices": seq_adaptor(Device._create),
-            "ActivateConnection": [ActiveConnection, [identity, object_path, object_path, object_path]],
-            "DeactivateConnection": [void, [object_path]],
-            },
-        properties = {
-            "State": NetworkManager.State,
-            "WirelessEnabled": [bool, english_to_bool],
-            "WirelessHardwareEnabled": bool,
-            "ActiveConnections": seq_adaptor(ActiveConnection),
-            },
-        signals = {
-            "StateChanged": [void, [NetworkManager.State]],
-            },
-        )
+
+#from dbusclient.adaptors import *
+
+NetworkManager._add_adaptors2(
+    GetDevices = MA(seq_adaptor(Device._create)),
+    ActivateConnection = MA(ActiveConnection, identity, object_path, object_path, object_path),
+    DeactivateConnection = MA(void, object_path),
+
+    State = PA(NetworkManager.State),
+    WirelessEnabled = PA(bool, english_to_bool),
+    WirelessHardwareEnabled = PA(bool),
+    ActiveConnections = PA(seq_adaptor(ActiveConnection)),
+
+    StateChanged = SA(NetworkManager.State),
+    )
 

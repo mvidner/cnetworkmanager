@@ -2,7 +2,9 @@
 
 import dbus
 import functools
-from func import *
+
+# TODO rename to adaptors
+from func import Adaptor, MethodAdaptor, PropertyAdaptor, SignalAdaptor
 
 def object_path(o):
     """Return the object path of o.
@@ -89,7 +91,11 @@ class DBusMio(dbus.proxies.ProxyObject):
         pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
         return pmi.Set(iface, key, value)
 
-def mklist(x):
+def _mklist(x):
+    """Return a list.
+
+    Tuples are made into lists, everything else a singleton list.
+    """
     if isinstance(x, list):
         return x
     elif isinstance(x, tuple):
@@ -97,8 +103,9 @@ def mklist(x):
     else:
         return [x]
 
-#class DBusClient(dbus.proxies.Interface):
 class DBusClient(DBusMio):
+    """
+    """
     _adaptors = {
         "methods": {},
         "signals": {},
@@ -124,17 +131,31 @@ class DBusClient(DBusMio):
     @classmethod
     def _add_adaptor(cls, kind, name, adaptor):
 #        print "ADD", cls, kind, name, adaptor
-        adaptor = mklist(adaptor)
+        if isinstance(adaptor, Adaptor):
+            cls._adaptors[kind][name] = adaptor
+            return
+
+        # this adjusts the (too) flexible list syntax
+        adaptor = _mklist(adaptor)
+        ret = adaptor[0]
         try:
             args = adaptor[1]
         except:
             args = []
-        args = mklist(args)
+        args = _mklist(args)
         try:
             kwargs = adaptor[2]
         except:
             kwargs = {}
-        cls._adaptors[kind][name] = [adaptor[0], args, kwargs]
+
+        if kind == "methods":
+            adaptor = MethodAdaptor(ret, *args)
+        elif kind == "properties":
+            setter = args[0] if len(args) else None
+            adaptor = PropertyAdaptor(ret, setter)
+        elif kind == "signals":
+            adaptor = SignalAdaptor(*args)
+        cls._adaptors[kind][name] = adaptor
             
 
     @classmethod
@@ -158,13 +179,26 @@ class DBusClient(DBusMio):
         assert len(kwargs) == 0
 #        print "AA", cls, cls._adaptors
 
+    @classmethod
+    def _add_adaptors2(cls, **kwargs):
+        """kwargs: a *flat* dictionary of name: adaptor"""
+        adict = {"methods":{}, "properties":{}, "signals":{}}
+        for k, v in kwargs.iteritems():
+            if isinstance(v, MethodAdaptor):
+                adict["methods"][k] = v
+            elif isinstance(v, PropertyAdaptor):
+                adict["properties"][k] = v
+            elif isinstance(v, SignalAdaptor):
+                adict["signals"][k] = v
+        cls._add_adaptors(adict)
+
     def __getattr__(self, name):
         "Wrap return values"
 
         callable = super(DBusClient, self).__getattr__(name)
         try:
             adaptor = self._get_adaptor("methods", name)
-            return async_callable_universal_adaptor(callable, adaptor)
+            return adaptor.adapt(callable)
         except KeyError:
             return callable
 
@@ -172,17 +206,17 @@ class DBusClient(DBusMio):
     def __getitem__(self, key):
         value = super(DBusClient, self).__getitem__(key)
         try:
-            adaptor = self._get_adaptor("properties", key)[0]
-        except KeyError, IndexError:
-            adaptor = identity
-        return adaptor(value)
+            adaptor = self._get_adaptor("properties", key)
+            return adaptor.adapt(value)
+        except KeyError:
+            return value
 
     def __setitem__(self, key, value):
         try:
-            adaptor = self._get_adaptor("properties", key)[1][0]
-        except KeyError, IndexError:
-            adaptor = identity
-        value = adaptor(value)
+            adaptor = self._get_adaptor("properties", key)
+            value = adaptor.adapt_write(value)
+        except KeyError:
+            pass
         return super(DBusClient, self).__setitem__(key, value)
 
 
@@ -193,9 +227,5 @@ class DBusClient(DBusMio):
 
         # TODO also demarshal kwargs
         adaptor = self._get_adaptor("signals", signame)
-        wrap_handler = callable_universal_adaptor(handler, adaptor)
+        wrap_handler = adaptor.adapt(handler)
         return self.connect_to_signal(signame, wrap_handler, interface, **kwargs)
-
-#class ObjectAddress:
-#    """An object path, optionally with a service/connection where to find it"""
-#    pass
