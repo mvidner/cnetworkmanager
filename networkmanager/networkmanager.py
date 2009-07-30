@@ -61,7 +61,7 @@ class NetworkManager(DBusClient):
 
 #from dbusclient.adaptors import *
 
-NetworkManager._add_adaptors2(
+NetworkManager._add_adaptors(
     GetDevices = MA(seq_adaptor(Device._create)),
     ActivateConnection = MA(ActiveConnection, identity, object_path, object_path, object_path),
     DeactivateConnection = MA(void, object_path),

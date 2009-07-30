@@ -131,66 +131,33 @@ class DBusClient(DBusMio):
     @classmethod
     def _add_adaptor(cls, kind, name, adaptor):
 #        print "ADD", cls, kind, name, adaptor
-        if isinstance(adaptor, Adaptor):
-            cls._adaptors[kind][name] = adaptor
-            return
-
-        # this adjusts the (too) flexible list syntax
-        adaptor = _mklist(adaptor)
-        ret = adaptor[0]
-        try:
-            args = adaptor[1]
-        except:
-            args = []
-        args = _mklist(args)
-        try:
-            kwargs = adaptor[2]
-        except:
-            kwargs = {}
-
-        if kind == "methods":
-            adaptor = MethodAdaptor(ret, *args)
-        elif kind == "properties":
-            setter = args[0] if len(args) else None
-            adaptor = PropertyAdaptor(ret, setter)
-        elif kind == "signals":
-            adaptor = SignalAdaptor(*args)
+        assert(isinstance(adaptor, Adaptor))
         cls._adaptors[kind][name] = adaptor
-            
 
     @classmethod
-    def _add_adaptors(cls, *args, **kwargs):
+    def _add_adaptors_dict(cls, andict):
         """
         a nested dictionary of kind:name:adaptor,
-        either as kwargs (new) or as a single dict arg (old, newest)
         """
         if not cls.__dict__.has_key("_adaptors"):
             # do not use inherited attribute
             cls._adaptors = {"methods":{}, "properties":{}, "signals":{}}
-        if len(args) != 0:
-            assert len(kwargs) == 0
-            assert len(args) == 1
-            kwargs = args[0]
 
         for section in cls._adaptors.keys():
-            secsource = kwargs.pop(section, {})
+            secsource = andict.pop(section, {})
             for name, adaptor in secsource.iteritems():
                 cls._add_adaptor(section, name, adaptor)
-        assert len(kwargs) == 0
+        assert len(andict) == 0
 #        print "AA", cls, cls._adaptors
 
     @classmethod
-    def _add_adaptors2(cls, **kwargs):
+    def _add_adaptors(cls, **kwargs):
         """kwargs: a *flat* dictionary of name: adaptor"""
         adict = {"methods":{}, "properties":{}, "signals":{}}
         for k, v in kwargs.iteritems():
-            if isinstance(v, MethodAdaptor):
-                adict["methods"][k] = v
-            elif isinstance(v, PropertyAdaptor):
-                adict["properties"][k] = v
-            elif isinstance(v, SignalAdaptor):
-                adict["signals"][k] = v
-        cls._add_adaptors(adict)
+            kind = v.kind()
+            adict[kind][k] = v
+        cls._add_adaptors_dict(adict)
 
     def __getattr__(self, name):
         "Wrap return values"

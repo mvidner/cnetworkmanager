@@ -34,13 +34,11 @@ class IP4Config(DBusClient):
         super(IP4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
 
 IP4Config._add_adaptors(
-            properties = {
-                "Addresses": identity, #TODO
-                "Nameservers": seq_adaptor(Ip4Address),
-                #"Domains": identity,
-                "Routes": identity, #TODO
-                },
-            )
+    Addresses = PA(identity), #TODO
+    Nameservers = PA(seq_adaptor(Ip4Address)),
+#    Domains = PA(identity),
+    Routes = PA(identity), #TODO
+    )
 
 class DHCP4Config(DBusClient):
     """
@@ -56,14 +54,10 @@ class DHCP4Config(DBusClient):
     def __init__(self, opath):
         super(DHCP4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
 
-DHCP4Config._add_adaptors(
-            signals = {
-                "PropertiesChanged": [void, [identity]],
-                },
-            properties = {
-                "Options": identity,
-                },
-            )
+#DHCP4Config._add_adaptors(
+#    PropertiesChanged = SA(identity),
+#    Options = PA(identity),
+#    )
 
 class Device(DBusClient):
     """networkmanager device
@@ -196,19 +190,16 @@ class Device(DBusClient):
 #        return "DEVICE " + self.object_path
 
 Device._add_adaptors(
-        signals = {
-            "StateChanged": [void, [Device.State, Device.State, Device.StateReason]],
-            },
-        properties = {
-            "Capabilities": Device.Cap,
-            "Ip4Address": Ip4Address,
-            "State": Device.State,
-            "Ip4Config": IP4Config,
-            "Dhcp4Config": DHCP4Config,
-            "Managed": bool,
-            "DeviceType": Device.DeviceType,
-            },
-        )
+    StateChanged = SA(Device.State, Device.State, Device.StateReason),
+
+    Capabilities = PA(Device.Cap),
+    Ip4Address = PA(Ip4Address),
+    State = PA(Device.State),
+    Ip4Config = PA(IP4Config),
+    Dhcp4Config = PA(DHCP4Config),
+    Managed = PA(bool),
+    DeviceType = PA(Device.DeviceType),
+    )
 
 # FIXME make them separate to enable plugins
 class Wired(Device):
@@ -222,15 +213,12 @@ class Wired(Device):
     IFACE = "org.freedesktop.NetworkManager.Device"
     # FIXME how to get parent adaptors?
 Wired._add_adaptors(
-            signals = {
-                "PropertiesChanged": [void, [identity]],
-                },
-            properties = {
-#                "HwAddress": identity,
-#                "Speed": identity,
-                "Carrier": bool,
-                },
-            )
+#    PropertiesChanged = SA(identity),
+
+#    HwAddress = PA(identity),
+#    Speed = PA(identity),
+    Carrier = PA(bool),
+    )
 
 Device._register_constructor(Device.DeviceType.ETHERNET, Wired)
 
@@ -251,19 +239,15 @@ class Wireless(Device):
         return "802-11-wireless"
 
 Wireless._add_adaptors(
-        methods = {
-            "GetAccessPoints": seq_adaptor(AccessPoint),
-            },
-        signals = {
-            "PropertiesChanged": [void, [identity]],
-            "AccessPointAdded": [void, [AccessPoint]],
-            "AccessPointRemoved": [void, [AccessPoint]],
-            },
-        properties = {
-            "Mode": Mode,
-            "ActiveAccessPoint": AccessPoint,
-            "WirelessCapabilities": Wireless.DeviceCap,
-            },
-        )
+    GetAccessPoints = MA(seq_adaptor(AccessPoint)),
+
+#    PropertiesChanged = SA(identity),
+    AccessPointAdded = SA(AccessPoint),
+    AccessPointRemoved = SA(AccessPoint),
+
+    Mode = PA(Mode),
+    ActiveAccessPoint = PA(AccessPoint),
+    WirelessCapabilities = PA(Wireless.DeviceCap),
+    )
 
 Device._register_constructor(Device.DeviceType.WIRELESS, Wireless)

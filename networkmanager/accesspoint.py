@@ -55,18 +55,14 @@ class AccessPoint(DBusClient):
         super(AccessPoint, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface=self.IFACE)
 
 AccessPoint._add_adaptors(
-            signals = {
-                "PropertiesChanged": [void, [identity]],
-                },
-            properties = {
-                "Flags": AccessPoint.Flags,
-                "WpaFlags": AccessPoint.Sec,
-                "RsnFlags": AccessPoint.Sec,
-                "Ssid": compose_ocers("".join, seq_adaptor(chr)), # byte array->str
-#                "Frequency": identity,
-#                "HwAddress": identity,
-                "Mode": Mode,
-#                "MaxBitrate": identity,
-                "Strength": int,
-                },
-            )
+#    PropertiesChanged = SA(identity),
+    Flags = PA(AccessPoint.Flags),
+    WpaFlags = PA(AccessPoint.Sec),
+    RsnFlags = PA(AccessPoint.Sec),
+    Ssid = PA(compose_ocers("".join, seq_adaptor(chr))), # byte array->str
+#    Frequency = PA(identity),
+#    HwAddress = PA(identity),
+    Mode = PA(Mode),
+#    MaxBitrate = PA(identity),
+    Strength = PA(int),
+    )

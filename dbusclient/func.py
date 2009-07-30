@@ -92,6 +92,10 @@ class SyncMethodAdaptor(CallableAdaptor):
 
     MethodAdaptor(retval_converter, arg1_converter, ...)
     """
+    @classmethod
+    def kind(cls):
+        return "methods"
+
     def adapt(self, callable):
         args_adapted_callable = super(SyncMethodAdaptor, self).adapt(callable)
         def adapted_callable(*args, **kwargs):
@@ -106,6 +110,10 @@ class MethodAdaptor(CallableAdaptor):
     in which case we do not adapt the return value.
     (TODO possible to get the reply callback and adapt *that*?)
     """
+
+    @classmethod
+    def kind(cls):
+        return "methods"
 
     @staticmethod
     def _is_async(**kwargs):
@@ -133,6 +141,10 @@ class PropertyAdaptor(Adaptor):
         # no setter at all for read only?
         super(PropertyAdaptor, self).__init__(getter, [setter], {})
 
+    @classmethod
+    def kind(cls):
+        return "properties"
+
     def adapt(self, value):
         return self.ret(value)
 
@@ -146,6 +158,10 @@ class SignalAdaptor(CallableAdaptor):
     """
     def __init__(self, *args): # no kwargs yet
         super(SignalAdaptor, self).__init__(void, *args)
+
+    @classmethod
+    def kind(cls):
+        return "signals"
 
 #FIXME duplicated in pydoc
 MA = MethodAdaptor

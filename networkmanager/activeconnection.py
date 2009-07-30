@@ -47,15 +47,11 @@ class ActiveConnection(DBusClient):
         return v
 
 ActiveConnection._add_adaptors(
-    signals = {
-#                "PropertiesChanged": [void, [identity]],
-        },
-    properties = {
-#        "ServiceName": identity,
-#        "Connection": Connection, # implemented in __getitem__
-        "SpecificObject": AccessPoint, #in most cases. figure out.
-        "Devices": seq_adaptor(Device._create),
-        "State": ActiveConnection.State,
-        "Default": bool,
-        }
+    PropertiesChanged = SA(identity),
+#    ServiceName = PA(identity),
+#    Connection = PA(Connection), # implemented in __getitem__
+    SpecificObject = PA(AccessPoint), #in most cases. figure out.
+    Devices = PA(seq_adaptor(Device._create)),
+    State = PA(ActiveConnection.State),
+    Default = PA(bool),
     )
