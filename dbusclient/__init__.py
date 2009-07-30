@@ -1,24 +1,47 @@
+"Convenience wrappers around dbus-python"
+
 import dbus
 import functools
 from func import *
 
 def object_path(o):
+    """Return the object path of o.
+
+    If o is a proxy object, use its appropriate attribute.
+    Otherwise assume that o already is an object path.
+    """
     if isinstance(o, dbus.proxies.ProxyObject):
         return o.object_path
     # hope it is ok
     return o
 
 class DBusMio(dbus.proxies.ProxyObject):
-    """Multi-interface object
+    """Multi-interface object.
+
+    Will look into introspection data to find which interface
+    to use for a method or a property, obviating the need for
+    dbus.proxies.Interface.
+    If introspection is not available, provide default_interface
+    to the constructor.
 
     BUGS: 1st method call will block with introspection"""
 
     def __init__(self, conn=None, bus_name=None, object_path=None, introspect=True, follow_name_owner_changes=False, **kwargs):
+        """Constructor.
+
+        kwargs may contain default_interface, to be used
+        if introspection does not provide it for a method/property
+        """
+
         # FIXME common for this class, all classes?
         self.__default_interface = kwargs.pop("default_interface", None)
         super(DBusMio, self).__init__(conn, bus_name, object_path, introspect, follow_name_owner_changes, **kwargs)
 
     def __getattr__(self, name):
+        """Proxied DBus methods.
+
+        Uses introspection or default_interface to find the interface.
+        """
         # TODO cache
 #        iface = self._interface_cache.get(name)
  #       if iface == None:
@@ -37,12 +60,30 @@ class DBusMio(dbus.proxies.ProxyObject):
 
     # properties
     def __getitem__(self, key):
+        """Proxies DBus properties as dictionary items.
+
+        a = DBusMio(...)
+        p = a["Prop"]
+
+        Uses default_interface (because dbus.proxies.ProxyObject
+        does not store introspection data for properties, boo. TODO.)
+        """
+
         iface = self.__default_interface # TODO cache
         # TODO _introspect_property_map
         pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
         return pmi.Get(iface, key)
 
     def __setitem__(self, key, value):
+        """Proxies DBus properties as dictionary items.
+
+        a = DBusMio(...)
+        a["Prop"] = "Hello"
+
+        Uses default_interface (because dbus.proxies.ProxyObject
+        does not store introspection data for properties, boo. TODO.)
+        """
+
         iface = self.__default_interface # TODO cache
         # TODO _introspect_property_map
         pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
@@ -69,7 +110,10 @@ class DBusClient(DBusMio):
     def _get_adaptor(cls, kind, name):
 #        print "GET", cls, kind, name
         try:
-            return cls._adaptors[kind][name]
+            a = cls._adaptors[kind][name]
+#            print ">", a
+# TODO cache somehow?
+            return a
         except KeyError:
             scls = cls.__mro__[1] # can use "super"? how?
             try:
@@ -96,7 +140,8 @@ class DBusClient(DBusMio):
     @classmethod
     def _add_adaptors(cls, *args, **kwargs):
         """
-        either 
+        a nested dictionary of kind:name:adaptor,
+        either as kwargs (new) or as a single dict arg (old, newest)
         """
         if not cls.__dict__.has_key("_adaptors"):
             # do not use inherited attribute

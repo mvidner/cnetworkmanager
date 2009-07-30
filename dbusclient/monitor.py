@@ -1,6 +1,8 @@
 import string
 
 class Monitor(object):
+    """A Base for printing signals on the bus"""
+
     def __init__(self, bus):
         self.bus = bus
 
