@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Fri Jul 31 13:58:14 CEST 2009 - mvidner@suse.cz
+
+- Removed noarch since Python has an arch dependent libdir.
+
+-------------------------------------------------------------------
 Wed Jul 29 17:40:00 CEST 2009 - mvidner@suse.cz
 
 - v0.20

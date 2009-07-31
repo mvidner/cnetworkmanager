@@ -30,7 +30,6 @@ Requires:       dbus-1-python python-gobject2
 Requires:	NetworkManager >= 0.7.0
 Provides:       NetworkManager-client
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-BuildArch:      noarch
 Source:         %{name}-%{version}.tar.gz
 %{py_requires}
 
@@ -62,27 +61,3 @@ rm -rf %{buildroot}
 %defattr(-,root,root)
 %doc README COPYING HACKING NEWS
 %changelog
-* Sat Mar 21 2009 mvidner@suse.cz
-- v0.8.4
-- New: When connecting (-C), monitor the NM connection state.
-- Fix: RPM packaging: consistent PREFIX (bnc#485413), owning pkgdatadir.
-- Fix: KeyError with --wep-hex. (James Hogan)
-- Fix: knetworkmanagerrc: Don't let ConnectionSettings
-  override ConnectionSecrets.
-- Updated pbkdf2.py to the newest upstream version (license
-  clarified). (Alexander Block)
-* Fri Mar 06 2009 mvidner@suse.cz
-- Packaging fix: claim ownership of pkgdatadir
-* Thu Mar 05 2009 mvidner@suse.cz
-- v0.8.3
-- Fix: secrets leak via o.fd.NMS.Connection.Secrets (CVE-2009-0365)
-- Fix: secrets leak via o.fd.NMS.Connection.GetSettings (bnc#479566#c3)
-* Sat Nov 22 2008 coolo@suse.de
-- buildrequire dbus-1 to fix file list check
-* Tue Nov 18 2008 mvidner@suse.cz
-- v0.8
-- New: --wep-pass
-- New: if there is another applet, report its pid
-- Fix: do not rely on DBus config from GUI applets
-* Fri Nov 07 2008 mvidner@suse.cz
-- initial packaging
