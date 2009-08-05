@@ -58,7 +58,7 @@ class DBusMio(dbus.proxies.ProxyObject):
                 iface = i
 #        print "METHOD %s INTERFACE %s" %(name, iface)
         callable = super(DBusMio, self).__getattr__(name)
-        return functools.partial(callable, dbus_interface=iface)
+        return functools.partial(callable, dbus_interface=iface, byte_arrays=True)
 
     # properties
     def __getitem__(self, key):
@@ -74,7 +74,7 @@ class DBusMio(dbus.proxies.ProxyObject):
         iface = self.__default_interface # TODO cache
         # TODO _introspect_property_map
         pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
-        return pmi.Get(iface, key)
+        return pmi.Get(iface, key, byte_arrays=True)
 
     def __setitem__(self, key, value):
         """Proxies DBus properties as dictionary items.
@@ -89,7 +89,7 @@ class DBusMio(dbus.proxies.ProxyObject):
         iface = self.__default_interface # TODO cache
         # TODO _introspect_property_map
         pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
-        return pmi.Set(iface, key, value)
+        return pmi.Set(iface, key, value, byte_arrays=True)
 
 def _mklist(x):
     """Return a list.

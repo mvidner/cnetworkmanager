@@ -5,6 +5,7 @@ from dbusclient.func import *
 import util
 
 class Mode(util.Enum):
+    "Mode of a wireless device or access point."
     UNKNOWN = 0
     ADHOC = 1
     INFRA = 2
@@ -59,7 +60,7 @@ AccessPoint._add_adaptors(
     Flags = PA(AccessPoint.Flags),
     WpaFlags = PA(AccessPoint.Sec),
     RsnFlags = PA(AccessPoint.Sec),
-    Ssid = PA(compose_ocers("".join, seq_adaptor(chr))), # byte array->str
+#    Ssid = PA(identity),
 #    Frequency = PA(identity),
 #    HwAddress = PA(identity),
     Mode = PA(Mode),
