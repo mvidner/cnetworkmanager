@@ -140,36 +140,28 @@ def get_device(dev_spec, hint):
     print "Device '%s' not found" % dev_spec
     return None
 
-def dump_prop(obj, prop_name):
-    print "%s: %s" %(prop_name, obj[prop_name])
-
-def dump_props(obj, *prop_names):
-    for prop_name in prop_names:
-        dump_prop(obj, prop_name)
-
-def dump_ap(ap):
-    dump_props(ap, "Flags", "WpaFlags", "RsnFlags",
-               "Ssid", "Frequency", "HwAddress",
-               "Mode", "MaxBitrate", "Strength")
+def prop_table(obj, *prop_names):
+    t = Table("Property", "Value")
+    for p in prop_names:
+        t.row(p, obj[p])
+    return t
 
 if options.device_info != None:
     d = get_device(options.device_info, "no hint")
     if d == None:
         print "not found"
     else:
-        dump_props(d, "Udi", "Interface", "Driver", "Capabilities",
-               "Ip4Address", "State", "Ip4Config", "Dhcp4Config",
-               "Managed", "DeviceType")
+        props = ["Udi", "Interface", "Driver", "Capabilities",
+                 # "Ip4Address", # bogus, remembers last addr even after disused
+                 "State",
+                 # "Ip4Config", "Dhcp4Config", # only __repr__
+               "Managed", "DeviceType"]
         if d._settings_type() == "802-11-wireless":
-            dump_props(d, "Mode", "WirelessCapabilities")
-            aap = d["ActiveAccessPoint"]
-            for ap in d.GetAccessPoints():
-                print " AP:", ap.object_path
-                if ap.object_path == aap.object_path:
-                    print "  ACTIVE"
-                dump_ap(ap)
-        else:
-            dump_prop(d, "Carrier")
+            props.extend(["Mode", "WirelessCapabilities"])
+        elif d._settings_type() == "802-3-ethernet":
+            props.extend(["Carrier"])
+
+        print prop_table(d, *props)
 
 if options.ap_list:
     devs = nm.GetDevices()
@@ -189,8 +181,11 @@ if options.ap_info != None:
         aap = dev["ActiveAccessPoint"]
         for ap in dev.GetAccessPoints():
             if ap["HwAddress"] == options.ap_info:
-                print "Active:", ap.object_path == aap.object_path
-                dump_ap(ap)
+                t = prop_table(ap, "Flags", "WpaFlags", "RsnFlags",
+                               "Ssid", "Frequency", "HwAddress",
+                               "Mode", "MaxBitrate", "Strength")
+                t.row("Active", ap.object_path == aap.object_path)
+                print t
                 
 #def is_opath(x):
 #    return is_instance(x, str) and x[0] == "/"
