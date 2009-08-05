@@ -154,7 +154,7 @@ class Device(DBusClient):
     @classmethod
     def _settings_type(cls):
         """The matching settings["connection"]["type"]"""
-        AbstractMethodCalled    # no standard way for saying 'abstract'
+        return "unknown"
 
     SERVICE = "org.freedesktop.NetworkManager"
     IFACE = "org.freedesktop.NetworkManager.Device"
