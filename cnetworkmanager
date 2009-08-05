@@ -171,17 +171,25 @@ if options.device_info != None:
         else:
             dump_prop(d, "Carrier")
 
-if options.ap_list or options.ap_info != None:
+if options.ap_list:
+    devs = nm.GetDevices()
+    # nm.get_wifi_devices()
+    # nm.get_devices_by_type(Device.Type.WIRELESS)
+    for dev in filter(lambda d: d._settings_type() == "802-11-wireless", devs):
+        aap = dev["ActiveAccessPoint"]
+        t = Table("Active", "HwAddress", "Ssid")
+        for ap in dev.GetAccessPoints():
+            active = "*" if ap.object_path == aap.object_path else ""
+            t.row(active, ap["HwAddress"], ap["Ssid"])
+        print t
+
+if options.ap_info != None:
     devs = nm.GetDevices()
     for dev in filter(lambda d: d._settings_type() == "802-11-wireless", devs):
         aap = dev["ActiveAccessPoint"]
         for ap in dev.GetAccessPoints():
-            is_active = ap.object_path == aap.object_path
-            if options.ap_list:
-                active = "*" if is_active else " "
-                print ap["HwAddress"], active, ap["Ssid"]
-            elif ap["HwAddress"] == options.ap_info:
-                print "Active:", is_active
+            if ap["HwAddress"] == options.ap_info:
+                print "Active:", ap.object_path == aap.object_path
                 dump_ap(ap)
                 
 #def is_opath(x):
