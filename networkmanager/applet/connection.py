@@ -19,7 +19,6 @@ class Connection(DBusClient):
     Removed ( )
     """
 
-    # FIXME into DBusClient ctor
     IFACE = "org.freedesktop.NetworkManagerSettings.Connection"
     # FIXME
     SECRETS_IFACE = "org.freedesktop.NetworkManagerSettings.Connection.Secrets"

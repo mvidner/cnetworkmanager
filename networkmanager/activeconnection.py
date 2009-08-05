@@ -26,7 +26,6 @@ class ActiveConnection(DBusClient):
     """
 
     SERVICE = "org.freedesktop.NetworkManager"
-    OPATH = "/org/freedesktop/NetworkManager"
     IFACE = "org.freedesktop.NetworkManager.Connection.Active"
 
     def __init__(self, opath):
