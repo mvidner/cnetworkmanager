@@ -9,6 +9,7 @@ from networkmanager.monitor import Monitor
 from networkmanager.applet import NetworkManagerSettings, SYSTEM_SERVICE, USER_SERVICE
 from networkmanager.applet.service import NetworkManagerUserSettings
 import networkmanager.applet.settings as settings
+from networkmanager.util import Table
 
 # must be set before we ask for signals
 from dbus.mainloop.glib import DBusGMainLoop
@@ -21,6 +22,10 @@ LOOP = False
 from optparse import OptionParser
 
 op = OptionParser(version="%prog " + VERSION)
+
+op.add_option("--terse",
+              action="store_true", default=False,
+              help="No table headings and padding, suitable for parsing")
 
 # TODO http://docs.python.org/lib/optparse-adding-new-types.html
 op.add_option("-w", "--wifi",
@@ -94,6 +99,8 @@ op.add_option("--wpa-pass",
 
 (options, args) = op.parse_args()
 
+Table.terse = options.terse
+
 nm = NetworkManager()
 
 true_choices =  ["1", "on", "yes", "true"]
@@ -110,8 +117,10 @@ if options.whe:
 
 if options.device_list:
     devs = nm.GetDevices()
+    t = Table("Interface", "Type", "State")
     for dev in devs:
-        print dev["Interface"], dev["DeviceType"], dev["State"]
+        t.row(dev["Interface"], dev["DeviceType"], dev["State"])
+    print t
 
 # --device-info, TODO clean up 
 def get_device(dev_spec, hint):
