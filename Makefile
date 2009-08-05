@@ -19,4 +19,7 @@ dist:
 notes:
 	find -name \*.py | xargs grep -nH -E 'TODO|FIXME'
 
-.PHONY: all check check-nonm install dist notes
+doc:
+	epydoc --config epydoc.cfg
+
+.PHONY: all check check-nonm install dist notes doc

@@ -32,18 +32,19 @@ pretty, ugly -> masker
 def compose_ocers(outer, inner):
     return lambda x: outer(inner(x))
 
-"""
-A *converter* works on values, typically method arguments and return values.
-It takes one value and returns one value (or None, for *void*).
-
-A *biconverter* (not implemented) groups two converters that convert
-between two types, such as escaper+unescaper, marshaller+unmarshaller,
-opath_to_object+object_to_opath.
-
-An *adaptor* groups converters for a method, property, or signal,
-(and knows how to apply them?)
-"""
 class Adaptor(object):
+    """
+    A B{converter} works on values, typically method arguments and return values.
+    It takes one value and returns one value (or None, for C{void}).
+    
+    A B{biconverter} (not implemented) groups two converters that convert
+    between two types, such as escaper+unescaper, marshaller+unmarshaller,
+    opath_to_object+object_to_opath.
+    
+    An B{adaptor} groups converters for a method, property, or signal,
+    (and knows how to apply them?)
+    """
+    __docformat__ = "epytext en"
     def __init__(self, ret, args, kwargs):
         self.ret = ret
         self.args = args

@@ -3,5 +3,6 @@ cnetworkmanager-*.tar.*
 MANIFEST
 build/
 dist/
+html/
 *.pyc
 *~
