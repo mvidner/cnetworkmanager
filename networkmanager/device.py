@@ -7,7 +7,7 @@ from dbusclient.func import *
 from util import Enum, Flags
 from accesspoint import AccessPoint, Mode # for Wireless
 
-class Ip4Address:
+class Ip4Address(object):
     def __init__(self, int32):
         self.a = int32
     def __str__(self):

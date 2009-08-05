@@ -1,4 +1,4 @@
-class NamedNumbers:
+class NamedNumbers(object):
     """Base for Enum and Flags."""
 
     def __init__(self, value):
