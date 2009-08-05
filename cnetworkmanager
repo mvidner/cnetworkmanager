@@ -143,12 +143,6 @@ def get_device(dev_spec, hint):
     print "Device '%s' not found" % dev_spec
     return None
 
-def prop_table(obj, *prop_names):
-    t = Table("Property", "Value")
-    for p in prop_names:
-        t.row(p, obj[p])
-    return t
-
 if options.device_info != None:
     d = get_device(options.device_info, "no hint")
     if d == None:
@@ -164,7 +158,7 @@ if options.device_info != None:
         elif d._settings_type() == "802-3-ethernet":
             props.extend(["Carrier"])
 
-        print prop_table(d, *props)
+        print Table.from_items(d, *props)
 
 if options.ap_list:
     devs = nm.GetDevices()
@@ -184,7 +178,7 @@ if options.ap_info != None:
         aap = dev["ActiveAccessPoint"]
         for ap in dev.GetAccessPoints():
             if ap["HwAddress"] == options.ap_info:
-                t = prop_table(ap, "Flags", "WpaFlags", "RsnFlags",
+                t = Table.from_items(ap, "Flags", "WpaFlags", "RsnFlags",
                                "Ssid", "Frequency", "HwAddress",
                                "Mode", "MaxBitrate", "Strength")
                 t.row("Active", ap.object_path == aap.object_path)

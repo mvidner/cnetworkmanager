@@ -101,6 +101,13 @@ class Table(object):
         self.rows = []
 
     @staticmethod
+    def from_items(obj, *items):
+        t = Table("Property", "Value")
+        for i in items:
+            t.row(i, obj[i])
+        return t
+
+    @staticmethod
     def from_nested_dict(dd):
         t = Table("Section", "Property", "Value")
         for s, d in dd.iteritems():
