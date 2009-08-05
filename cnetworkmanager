@@ -63,6 +63,9 @@ op.add_option("-u", "--usrcon",
 op.add_option("-s", "--syscon",
               action="store_true", default=False,
               help="List system connection settings")
+op.add_option("--con-info", "--ci",
+              help="Info about connection settings ID (of the *user*/system KIND)",
+              metavar="[KIND,]ID")
 
 op.add_option("-c", "--actcon",
               action="store_true", default=False,
@@ -192,6 +195,11 @@ if options.ap_info != None:
 
 # move this to networkmanagersettings
 def get_connection(svc, conn_spec):
+    if svc == "" or svc == "user":
+        svc = USER_SERVICE
+    elif svc == "system":
+        svc = SYSTEM_SERVICE
+
 #    if is_opath(conn_spec):
 #        return conn_spec
     applet = NetworkManagerSettings(svc)
@@ -226,6 +234,19 @@ if options.usrcon:
     list_conections(USER_SERVICE)
 if options.syscon:
     list_conections(SYSTEM_SERVICE)
+
+if options.con_info != None:
+    (svc, con) = ("", options.con_info)
+    if "," in con:
+        (svc, con) = con.split(",")
+
+    c = get_connection(svc, con)
+    cs = c.GetSettings()
+    print Table.from_nested_dict(cs)
+    type = cs["connection"]["type"]
+    secu = cs[type]["security"]
+    cse = c.GetSecrets(secu, [], False)
+    print Table.from_nested_dict(cse)
 
 # this shows we do need to add __str__ to the objects
 if options.actcon:
@@ -288,11 +309,6 @@ if options.connect != None:
 
 if options.activate_connection != None:
     (svc, conpath, devpath, appath) = options.activate_connection.split(',')
-    if svc == "" or svc == "user":
-        svc = USER_SERVICE
-    elif svc == "system":
-        svc = SYSTEM_SERVICE
-
     conn = get_connection(svc, conpath)
     hint = get_connection_devtype(conn)
     dev = get_device(devpath, hint)

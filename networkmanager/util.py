@@ -100,6 +100,17 @@ class Table(object):
         self.headings = args
         self.rows = []
 
+    @staticmethod
+    def from_nested_dict(dd):
+        t = Table("Section", "Property", "Value")
+        for s, d in dd.iteritems():
+            t.row(s, "", "")
+            for k, v in d.iteritems():
+                if isinstance(v, list):
+                    v = ", ".join(v)
+                t.row("", k, v)
+        return t
+
     def row(self, *args):
         """The arguments are row items.
 
