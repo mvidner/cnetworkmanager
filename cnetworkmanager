@@ -210,11 +210,17 @@ def list_conections(svc):
     acs = nm["ActiveConnections"]
     acos = map(lambda a: a["Connection"].object_path, acs)
 
-    applet = NetworkManagerSettings(svc)
+    try:
+        applet = NetworkManagerSettings(svc)
+    except dbus.exceptions.DBusException, e:
+        print e
+        return
+    t = Table("Active", "Name", "Type")
     for conn in applet.ListConnections():
         cs = conn.GetSettings()
-        active = "*" if conn.object_path in acos else " "
-        print active, cs["connection"]["id"], cs["connection"]["type"]
+        active = "*" if conn.object_path in acos else ""
+        t.row(active, cs["connection"]["id"], cs["connection"]["type"])
+    print t
 
 if options.usrcon:
     list_conections(USER_SERVICE)
@@ -224,6 +230,7 @@ if options.syscon:
 # this shows we do need to add __str__ to the objects
 if options.actcon:
     acs = nm["ActiveConnections"]
+    t = Table("State", "Name", "AP", "Devices", "Default route")
     for ac in acs:
         cid = ac["Connection"].GetSettings()["connection"]["id"]
         try:
@@ -231,8 +238,9 @@ if options.actcon:
         except:                 # no AP for wired. TODO figure out "/" object
             apmac = ""
         devs = ", ".join(map(lambda d: d["Interface"], ac["Devices"]))
-        hdr = "(has default route)" if ac["Default"] else ""
-        print ac["State"], cid, apmac, devs, hdr
+        hdr = "*" if ac["Default"] else ""
+        t.row(ac["State"], cid, apmac, devs, hdr)
+    print t
 
 if options.monitor:
     m = Monitor()
