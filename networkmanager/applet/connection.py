@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import dbus
-from ..dbusclient import DBusClient
-#from ..dbusclient.func import *
+from dbusclient import DBusClient
+#from dbusclient.func import *
 
 
 class Connection(DBusClient):

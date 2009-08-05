@@ -1,6 +1,6 @@
 import dbus
 import os
-from ..settings import Settings
+from networkmanager.applet.settings import Settings
 
 # server analog of cConnection
 class Connection(dbus.service.Object):

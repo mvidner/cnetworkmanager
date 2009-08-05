@@ -4,9 +4,9 @@ It is renamed in this library to reduce confusion with 'Settings'
 which is the nested map returned by NMS.Connection.GetSettings"""
 
 import dbus
-from ..dbusclient import DBusClient
-from ..dbusclient.func import *
-from connection import Connection
+from dbusclient import DBusClient
+from dbusclient.func import *
+from networkmanager.applet.connection import Connection
 
 __all__ = ["Applet", "Connection",]
 
