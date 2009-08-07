@@ -1,0 +1,48 @@
+<title>Screenshots -  cnetworkmanager</title>
+
+<h3>--wireless-hardware-enabled</h3>
+<pre>$ cnetworkmanager <b>--whe</b>
+True
+</pre>
+
+<h3>--wireless-enabled</h3>
+<pre>$ cnetworkmanager <b>--we</b>
+True
+</pre>
+
+<h3>--state</h3>
+<pre>$ cnetworkmanager <b>--state</b>
+DISCONNECTED
+</pre>
+
+<h3>Asleep</h3>
+<pre>$ cnetworkmanager <b>--online 0</b>
+$ cnetworkmanager <b>--state</b>
+ASLEEP
+$ cnetworkmanager <b>--device-list</b>
+Interface | Type     | State
+----------+----------+----------
+eth0      | ETHERNET | UNMANAGED
+wlan0     | WIRELESS | UNMANAGED
+</pre>
+<h3>Awake</h3>
+<pre>$ cnetworkmanager <b>--online 1</b>
+$ cnetworkmanager <b>--state</b>
+DISCONNECTED
+$ cnetworkmanager <b>--device-list</b>
+Interface | Type     | State
+----------+----------+-------------
+eth0      | ETHERNET | UNAVAILABLE
+wlan0     | WIRELESS | DISCONNECTED
+</pre>
+
+<h3>Connections</h3>
+<pre>$ cnetworkmanager <b>--usrcon</b>
+org.freedesktop.DBus.Error.ServiceUnknown: The name org.freedesktop.NetworkManagerUserSettings was not provided by any .service files
+$ cnetworkmanager <b>--syscon</b>
+Active | Name        | Type           
+-------+-------------+----------------
+       | Auto Monet  | 802-11-wireless
+*      | Auto frogs  | 802-11-wireless
+       | System eth0 | 802-3-ethernet 
+</pre>
