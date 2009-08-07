@@ -23,7 +23,7 @@ from optparse import OptionParser
 
 op = OptionParser(version="%prog " + VERSION)
 
-op.add_option("--terse",
+op.add_option("-t", "--terse",
               action="store_true", default=False,
               help="No table headings and padding, suitable for parsing")
 
@@ -39,9 +39,12 @@ op.add_option("-o", "--online",
 op.add_option("--state",
               action="store_true", default=False,
               help="Print the NM state")
-op.add_option("--whe", "--wireless-hardware-enabled",
+op.add_option("--we", "--wireless-enabled",
               action="store_true", default=False,
               help="Print whether the WiFi is enabled")
+op.add_option("--whe", "--wireless-hardware-enabled",
+              action="store_true", default=False,
+              help="Print whether the WiFi hardware is enabled")
 
 op.add_option("-d", "--device-list", "--dev",
               action="store_true", default=False,
@@ -109,8 +112,15 @@ nm = NetworkManager()
 true_choices =  ["1", "on", "yes", "true"]
 if options.wifi != None:
     nm["WirelessEnabled"] = options.wifi in true_choices
+if options.we:
+    print nm["WirelessEnabled"]
 if options.online != None:
-    nm.Sleep(not options.online in true_choices)
+    try:
+        nm.Sleep(not options.online in true_choices)
+    except dbus.exceptions.DBusException, e:
+        if e.get_dbus_name() != "org.freedesktop.NetworkManager.AlreadyAsleepOrAwake":
+            raise
+
 if options.state:
     print nm["State"]
 if options.whe:
