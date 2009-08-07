@@ -1,20 +1,25 @@
-# FIXME do we need to ensure that objects get unique proxies? how?
+"Converters and adaptors."
+# TODO check spelling
 
 # TODO object conversions should be more automatic
-# TODO distinguish marshallers/demarshallers
 
-def seq_adaptor(item_adaptor):
-    return lambda seq: map(item_adaptor, seq)
+def seq_adaptor(item_converter):
+    "Returns a converter for a sequence, given a converter for one item."
+    return lambda seq: map(item_converter, seq)
 
 def identity(x):
+    """Identity converter.
+
+    identity(x) == x"""
     return x
 
 def void(x):
+    """Dummy converter for functions that return nothing.
+
+    void(x) == None"""
     return None
 
-# glossary:
-#   ocer: object converter. a function taking one object and returning on object
-
+# random unused ideas about naming all this
 """
 raw value, cooked value (RV, CV)
 
@@ -29,20 +34,23 @@ translator
 pretty, ugly -> masker
 """
 
-def compose_ocers(outer, inner):
+def compose_converters(outer, inner):
+    """Converter composition.
+
+    compose_converters(f, g)(x) == f(g(x))"""
     return lambda x: outer(inner(x))
 
 class Adaptor(object):
     """
+    An B{adaptor} groups converters for a method, property, or signal.
+    (and knows how to apply them?)
+
     A B{converter} works on values, typically method arguments and return values.
     It takes one value and returns one value (or None, for C{void}).
     
     A B{biconverter} (not implemented) groups two converters that convert
     between two types, such as escaper+unescaper, marshaller+unmarshaller,
-    opath_to_object+object_to_opath.
-    
-    An B{adaptor} groups converters for a method, property, or signal,
-    (and knows how to apply them?)
+    opath_to_object+object_to_opath.    
     """
     __docformat__ = "epytext en"
     def __init__(self, ret, args, kwargs):
@@ -57,28 +65,28 @@ class CallableAdaptor(Adaptor):
         super(CallableAdaptor, self).__init__(args[0], args[1:], {})
         
     @staticmethod
-    def convert_seq(seq, ocers):
-        """Convert seq's items using respective ocer from ocers.
+    def convert_seq(seq, converters):
+        """Convert seq's items using respective converter from converters.
     
-        seq and ocers must have same length."""
+        seq and converters must have same length."""
     
-        if len(seq) != len(ocers):
+        if len(seq) != len(converters):
             print "SEQ:", seq
-            print "OCERS:", ocers
+            print "CONVERTERS:", converters
             raise
-        return [ocer(obj) for obj, ocer in zip(seq, ocers)]
+        return [converter(obj) for obj, converter in zip(seq, converters)]
     
     @staticmethod
-    def convert_dict(dict, ocer_dict):
-        """Convert dict's items using respective ocer from ocer_dict.
+    def convert_dict(dict, converter_dict):
+        """Convert dict's items using respective converter from converter_dict.
     
-        ocer_dict must have items for all keys in dict.
+        converter_dict must have items for all keys in dict.
         ^ NOT, identity is used otherwise
         """
         retval = {}
         for key, value in dict.iteritems():
-            ocer = ocer_dict.get(key, identity)
-            retval[key] = ocer(value)
+            converter = converter_dict.get(key, identity)
+            retval[key] = converter(value)
         return retval
 
     def adapt(self, callable):
