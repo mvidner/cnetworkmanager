@@ -1,9 +1,17 @@
+"A crude signal monitor for NetworkManager."
+
 import dbus
 import dbusclient.monitor
 import networkmanager
 import device
 
 class Monitor(dbusclient.monitor.Monitor):
+    """A crude signal monitor for NetworkManager.
+
+    It was done before the rest of the library
+    and should be replaced with something more fitting the rest.
+    """
+
     def __init__(self):
         super(Monitor, self).__init__(dbus.SystemBus())
 
