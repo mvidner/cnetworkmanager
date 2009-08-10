@@ -1,4 +1,18 @@
 -------------------------------------------------------------------
+Mon Aug 10 22:00:00 CEST 2009 - mvidner@suse.cz
+
+- v0.21
+- User visible changes:
+ * Added screenshots.html.
+ * Output in a tabular form (like Tambet's nmcli); --terse/-t to disable.
+ * Added --wireless-enabled/--we.
+ * Added --con-info.
+
+ * For unimplemented device types, return "unknown", crash not (Kevin Fenzi).
+ * Ignore AlreadyAsleepOrAwake error (-o).
+ * Flags with zero value now output its name (NONE) instead of nothing.
+
+-------------------------------------------------------------------
 Fri Jul 31 13:58:14 CEST 2009 - mvidner@suse.cz
 
 - Removed noarch since Python has an arch dependent libdir.

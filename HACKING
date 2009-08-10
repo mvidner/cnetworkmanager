@@ -2,7 +2,7 @@ Release Checklist
 
 - NEWS, .changes, %changelog
 - README
-- version: program, spec def, Makefile
+- version: program, spec def, setup.py
 - make dist
 - osc build standard
 - homepage

@@ -17,6 +17,11 @@ results in an L{ActiveConnection} which remembers its ingredients. The device
 then knows its L{IP4Config} and L{DHCP4Config}.
 
 (TODO: explain VPN plugins, modems (ModemManager))
+
+For details, see
+
+  - U{http://projects.gnome.org/NetworkManager/developers/spec.html}
+  - U{http://live.gnome.org/NetworkManagerConfigurationSpecification}
 """
 #__docformat__ = "restructuredtext en"
 # TODO hyperlinks to classes in epydoc. a diagram?

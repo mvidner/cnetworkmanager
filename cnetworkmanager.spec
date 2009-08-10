@@ -18,7 +18,7 @@
 
 
 Name:           cnetworkmanager
-Version:        0.20
+Version:        0.21
 Release:        1
 Summary:        Command-line client for NetworkManager
 License:        GPL v2 or later
@@ -59,5 +59,5 @@ rm -rf %{buildroot}
 
 %files -f  INSTALLED_FILES
 %defattr(-,root,root)
-%doc README COPYING HACKING NEWS
+%doc README COPYING HACKING NEWS screenshots.html
 %changelog

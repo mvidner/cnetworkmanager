@@ -3,7 +3,7 @@
 
 from distutils.core import setup
 setup(name = 'cnetworkmanager',
-      version = '0.20',
+      version = '0.21',
       description = 'NetworkManager library and CLI',
       author = 'Martin Vidner',
       author_email = 'martin@vidner.net',

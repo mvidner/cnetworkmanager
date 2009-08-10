@@ -1,3 +1,24 @@
+0.21, Mon 2009-08-10
+User visible:
+
+Added screenshots.html.
+Output in a tabular form (like Tambet's nmcli); --terse/-t to disable.
+Added --wireless-enabled/--we.
+Added --con-info.
+
+For unimplemented device types, return "unknown", crash not (Kevin Fenzi).
+Ignore AlreadyAsleepOrAwake error (-o).
+Flags with zero value now output its name (NONE) instead of nothing.
+
+Ongoing library cleanup:
+
+Introduced Adaptor classes: MethodAdaptor, PropertyAdaptor, SignalAdaptor.
+Adding docstrings.
+Always use byte_arrays=True in DBusMio.
+
+Build fix: Removed noarch since Python has an arch dependent libdir (on
+openSUSE)
+
 0.20, Wed 2009-07-29
 Major rewrite:
 Created a library wrapping the NM DBus API.
