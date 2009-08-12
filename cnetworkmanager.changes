@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Wed Aug 12 15:20:09 CEST 2009 - mvidner@suse.cz
+
+- Reintroduced noarch, if allowed by the base python packaging.
+- BuildRequire python-devel to fix build, for openSUSE 11.0.
+
+-------------------------------------------------------------------
 Mon Aug 10 22:00:00 CEST 2009 - mvidner@suse.cz
 
 - v0.21

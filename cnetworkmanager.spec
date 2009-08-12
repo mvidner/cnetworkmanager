@@ -26,6 +26,13 @@ Url:            http://vidner.net/martin/software/cnetworkmanager/
 Group:          Productivity/Networking/System
 # build time reqs same as run time because we run tests
 BuildRequires:  dbus-1-python python-gobject2
+%if 0%{?suse_version} <= 1100 
+BuildRequires:  python-devel
+%endif
+# if suse>11.1 or not suse:
+%if %{?suse_version: %{suse_version} > 1110} %{!?suse_version:1}
+BuildArch:      noarch
+%endif
 Requires:       dbus-1-python python-gobject2
 Requires:	NetworkManager >= 0.7.0
 Provides:       NetworkManager-client
