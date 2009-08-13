@@ -7,7 +7,7 @@ check: check-nonm
 
 check-nonm:
 	for T in `find . -name \*.py | xargs grep -l '>>>'`; do python $$T; done
-	for T in test/test01*.py; do $$T; done
+	for T in test/test01*.py; do PYTHONPATH=. $$T; done
 
 install:
 	$(SETUP) install

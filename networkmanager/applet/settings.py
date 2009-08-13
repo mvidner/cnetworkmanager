@@ -104,7 +104,7 @@ class Wep(WiFi):
     def __init__(self, ssid, key, hashed_key=""):
         "One of key, hashed_key must be present"
 
-        super(WiFi, self).__init__(ssid)
+        super(Wep, self).__init__(ssid)
         self["802-11-wireless"]["security"] = "802-11-wireless-security"
         self["802-11-wireless-security"] = {}
         self["802-11-wireless-security"]["key-mgmt"] = "none"
@@ -126,10 +126,10 @@ class WpaPsk(WiFi):
     def __init__(self, ssid, key, hashed_key=""):
         "One of key, hashed_key must be present"
 
-        super(WiFi, self).__init__(ssid)
+        super(WpaPsk, self).__init__(ssid)
         self["802-11-wireless"]["security"] = "802-11-wireless-security"
         self["802-11-wireless-security"] = {}
-        self["802-11-wireless-security"]["group"] =    ["tkip", "cselfp"]
+        self["802-11-wireless-security"]["group"] =    ["tkip", "ccmp"]
         self["802-11-wireless-security"]["pairwise"] = ["tkip", "ccmp"]
         self["802-11-wireless-security"]["key-mgmt"] = "wpa-psk"
         if hashed_key == "":
