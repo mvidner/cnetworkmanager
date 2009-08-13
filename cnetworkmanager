@@ -197,16 +197,18 @@ if options.ap_info != None:
 #def is_opath(x):
 #    return is_instance(x, str) and x[0] == "/"
 
-# move this to networkmanagersettings
-def get_connection(svc, conn_spec):
+def get_service_name(svc):
     if svc == "" or svc == "user":
         svc = USER_SERVICE
     elif svc == "system":
         svc = SYSTEM_SERVICE
+    return svc
 
+# move this to networkmanagersettings
+def get_connection(svc, conn_spec):
 #    if is_opath(conn_spec):
 #        return conn_spec
-    applet = NetworkManagerSettings(svc)
+    applet = NetworkManagerSettings(get_service_name(svc))
     for conn in applet.ListConnections():
         cs = conn.GetSettings()
         if cs["connection"]["id"] == conn_spec:
@@ -313,6 +315,7 @@ if options.connect != None:
 
 if options.activate_connection != None:
     (svc, conpath, devpath, appath) = options.activate_connection.split(',')
+    svc = get_service_name(svc)
     conn = get_connection(svc, conpath)
     hint = get_connection_devtype(conn)
     dev = get_device(devpath, hint)
