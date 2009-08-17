@@ -220,7 +220,7 @@ def get_connection_devtype(conn):
     cs = conn.GetSettings()
     return cs["connection"]["type"]
 
-def list_conections(svc):
+def list_connections(svc):
     acs = nm["ActiveConnections"]
     acos = map(lambda a: a["Connection"].object_path, acs)
 
@@ -237,9 +237,9 @@ def list_conections(svc):
     print t
 
 if options.usrcon:
-    list_conections(USER_SERVICE)
+    list_connections(USER_SERVICE)
 if options.syscon:
-    list_conections(SYSTEM_SERVICE)
+    list_connections(SYSTEM_SERVICE)
 
 if options.con_info != None:
     (svc, con) = ("", options.con_info)
