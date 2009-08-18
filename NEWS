@@ -1,3 +1,8 @@
+0.21.1, Tue 2009-08-18
+Fixed the --wep-* and --wpa-* options (Gentoo#281099).
+Fixed --activate-connection failing with Invalid settings service name.
+openSUSE 11.2: noarch again.
+
 0.21, Mon 2009-08-10
 User visible:
 

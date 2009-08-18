@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Tue Aug 18 15:40:06 CEST 2009 - mvidner@suse.cz
+
+- Fixed the --wep-* and --wpa-* options (Gentoo#281099).
+- Fixed --activate-connection failing with Invalid settings service name.
+
+-------------------------------------------------------------------
 Wed Aug 12 15:20:09 CEST 2009 - mvidner@suse.cz
 
 - Reintroduced noarch, if allowed by the base python packaging.
