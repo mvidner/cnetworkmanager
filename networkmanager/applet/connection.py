@@ -2,10 +2,11 @@
 
 import dbus
 from dbusclient import DBusClient
+from networkmanager.base import Base
 #from dbusclient.func import *
 
 
-class Connection(DBusClient):
+class Connection(Base):
     """NetworkManagerSettings.Connection (including Secrets)
 
      Methods:
@@ -24,7 +25,7 @@ class Connection(DBusClient):
     SECRETS_IFACE = "org.freedesktop.NetworkManagerSettings.Connection.Secrets"
 
     def __init__(self, service, opath):
-        super(Connection, self).__init__(dbus.SystemBus(), service, opath, default_interface=self.IFACE)
+        super(Connection, self).__init__(service, opath, default_interface=self.IFACE)
 
 # no adaptors necessary, it seems
 Connection._add_adaptors(

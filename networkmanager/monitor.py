@@ -4,6 +4,7 @@ import dbus
 import dbusclient.monitor
 import networkmanager
 import device
+from base import Bus
 
 class Monitor(dbusclient.monitor.Monitor):
     """A crude signal monitor for NetworkManager.
@@ -13,7 +14,7 @@ class Monitor(dbusclient.monitor.Monitor):
     """
 
     def __init__(self):
-        super(Monitor, self).__init__(dbus.SystemBus())
+        super(Monitor, self).__init__(Bus())
 
         self.watch(
             self.propc_h,

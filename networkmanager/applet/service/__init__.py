@@ -2,10 +2,11 @@ import dbus
 import dbus.service
 import _dbus_bindings
 from connection import Connection
+from networkmanager.base import Bus
 from networkmanager.applet import USER_SERVICE, SYSTEM_SERVICE
 
 def service_pid(name):
-    bus = dbus.SystemBus()
+    bus = Bus()
     DBS = 'org.freedesktop.DBus'
     DBI = DBS
     dbo = bus.get_object(DBS, '/')
@@ -18,7 +19,7 @@ def service_pid(name):
 class NetworkManagerSettings(dbus.service.Object):
     # conmaps is a list
     def __init__(self, conmaps, requested_name = None):
-        bus = dbus.SystemBus()
+        bus = Bus()
         opath = "/org/freedesktop/NetworkManagerSettings"
         bus_name = None
         if requested_name != None:

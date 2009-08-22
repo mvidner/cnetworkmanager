@@ -1,12 +1,13 @@
 import dbus
 import os
+from networkmanager.base import Bus
 from networkmanager.applet.settings import Settings
 
 # server analog of cConnection
 class Connection(dbus.service.Object):
     def __init__(self, opath, conmap):
         assert isinstance(conmap, dict)
-        bus = dbus.SystemBus()
+        bus = Bus()
         dbus.service.Object.__init__(self, bus, opath)
         self.settings = Settings(conmap)
 

@@ -2,6 +2,7 @@
 import dbus
 from dbusclient import DBusClient
 from dbusclient.func import *
+from base import Base
 import util
 
 class Mode(util.Enum):
@@ -10,7 +11,7 @@ class Mode(util.Enum):
     ADHOC = 1
     INFRA = 2
 
-class AccessPoint(DBusClient):
+class AccessPoint(Base):
     """
     
      Signals:
@@ -53,7 +54,7 @@ class AccessPoint(DBusClient):
     IFACE = "org.freedesktop.NetworkManager.AccessPoint"
 
     def __init__(self, opath):
-        super(AccessPoint, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface=self.IFACE)
+        super(AccessPoint, self).__init__(self.SERVICE, opath, default_interface=self.IFACE)
 
 AccessPoint._add_adaptors(
 #    PropertiesChanged = SA(identity),

@@ -37,6 +37,7 @@ class DBusMio(dbus.proxies.ProxyObject):
 
         # FIXME common for this class, all classes?
         self.__default_interface = kwargs.pop("default_interface", None)
+#        print "OP:", object_path
         super(DBusMio, self).__init__(conn, bus_name, object_path, introspect, follow_name_owner_changes, **kwargs)
 
     def __getattr__(self, name):

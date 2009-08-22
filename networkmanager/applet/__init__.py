@@ -6,6 +6,7 @@ which is the nested map returned by NMS.Connection.GetSettings"""
 import dbus
 from dbusclient import DBusClient
 from dbusclient.func import *
+from networkmanager.base import Base
 from networkmanager.applet.connection import Connection
 
 __all__ = ["Applet", "Connection",]
@@ -16,7 +17,7 @@ USER_SERVICE = "org.freedesktop.NetworkManagerUserSettings"
 
 # TODO NMS.System, not in spec
 
-class NetworkManagerSettings(DBusClient):
+class NetworkManagerSettings(Base):
     """NetworkManagerSettings
 
     The NM Settings client library
@@ -34,7 +35,7 @@ class NetworkManagerSettings(DBusClient):
 
     def __init__(self, service):
         # default_interface because knetworkmanager doesnt provide introspection
-        super(NetworkManagerSettings, self).__init__(dbus.SystemBus(), service, self.OPATH, default_interface = self.IFACE)
+        super(NetworkManagerSettings, self).__init__(service, self.OPATH, default_interface = self.IFACE)
         # need instance specific adaptors for user/system conn factories
         self._add_adaptor("methods", "ListConnections", MA(seq_adaptor(self._create_connection)))
 

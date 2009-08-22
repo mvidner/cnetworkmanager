@@ -5,6 +5,7 @@ from dbusclient import DBusClient, object_path
 from dbusclient.func import *
 from device import Device
 from activeconnection import ActiveConnection
+from base import Base
 from util import Enum
 
 # gratuitous convertor to test writable properties
@@ -15,7 +16,7 @@ def english_to_bool(v):
         return False
     return v
 
-class NetworkManager(DBusClient):
+class NetworkManager(Base):
     """networkmanager
     
     The NM client library
@@ -47,7 +48,7 @@ class NetworkManager(DBusClient):
     IFACE = "org.freedesktop.NetworkManager"
 
     def __init__(self):
-        super(NetworkManager, self).__init__(dbus.SystemBus(), self.SERVICE, self.OPATH, default_interface=self.IFACE)
+        super(NetworkManager, self).__init__(self.SERVICE, self.OPATH, default_interface=self.IFACE)
 
 
     class State(Enum):

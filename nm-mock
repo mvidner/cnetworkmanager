@@ -1,0 +1,182 @@
+#!/usr/bin/python
+
+# TODO: adapt nm lib to connect to session bus too, and try this mock
+
+import dbus
+import dbus.service
+import _dbus_bindings
+from dbus.mainloop.glib import DBusGMainLoop
+import gobject
+
+import networkmanager
+import networkmanager.device
+from networkmanager.base import Bus
+
+class DBusMock(dbus.service.Object):
+    def __init__(self, bus, opath, bus_name=None):
+        print "INIT:", self.__class__, opath
+        if bus_name != None:
+            NEE = dbus.exceptions.NameExistsException
+            try:
+                bus_name = dbus.service.BusName(bus_name, bus,
+                                                replace_existing=True,
+                                                do_not_queue=True)
+            except NEE:
+                raise  NEE("%s (pid %d)" % (bus_name, self.service_pid(bus_name)))
+        super(DBusMock, self).__init__(bus, opath, bus_name)
+        self.properties = {}
+
+    @staticmethod
+    def service_pid(name):
+        bus = Bus()
+        DBS = 'org.freedesktop.DBus'
+        DBI = DBS
+        dbo = bus.get_object(DBS, '/')
+        dbi = dbus.Interface(dbo, DBI)
+        owner = dbi.GetNameOwner(name)
+        pid = dbi.GetConnectionUnixProcessID(owner)
+        return pid
+
+
+    @dbus.service.method(dbus_interface="org.freedesktop.DBus.Properties",
+                         in_signature="ss", out_signature="v")
+    def Get(self, interface, prop_name):
+        # real NM ignores the interface too
+        value = self.properties.get(prop_name, 42)
+        print "Get", self.__dbus_object_path__, prop_name, "->", value
+        return value
+
+class NetworkManagerMock(DBusMock):
+    def __init__(self, bus):
+        opath = "/org/freedesktop/NetworkManager"
+        bus_name = "org.freedesktop.NetworkManager"
+        super(NetworkManagerMock, self).__init__(bus, opath, bus_name)
+
+        self.properties.update({
+            "State": networkmanager.NetworkManager.State.CONNECTED,
+            "ActiveConnections": ["/AC1"],
+            })
+
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManager",
+                         in_signature="", out_signature="ao")
+    def GetDevices(self):
+        return ["/D1", "/D5"]
+
+class NetworkManagerSettingsMock(DBusMock):
+    def __init__(self, bus):
+        opath = "/org/freedesktop/NetworkManagerSettings"
+        bus_name = "org.freedesktop.NetworkManagerUserSettings"
+        super(NetworkManagerSettingsMock, self).__init__(bus, opath, bus_name)
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerSettings",
+                         in_signature="", out_signature="ao")
+    def ListConnections(self):
+        return ["/C1", "/C2"]
+
+class ConnectionMock(DBusMock):
+    def __init__(self, bus, opath):
+        super(ConnectionMock, self).__init__(bus, opath)
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManagerSettings.Connection",
+                         in_signature="", out_signature="a{sa{sv}}")
+    def GetSettings(self):
+        return {
+            "connection": {
+                "id": "mockid",
+                "type": "mocktype"
+                },
+            "section1": {
+                "key1": "value1",
+                "key2": "value2",
+                },
+            "section2": {
+                "key3": "value4",
+                "key4": "value4",
+                },
+            }
+
+
+class DeviceMock(DBusMock):
+    def __init__(self, bus, opath):
+        super(DeviceMock, self).__init__(bus, opath)
+
+        self.properties.update({
+            "Udi": "/hal/udi",
+            "Driver": "mock driver",
+            "HwAddress": "11:22:33:44:55:66",
+            "Ip4Config": "/IC1",
+            })
+
+class WiredDeviceMock(DeviceMock):
+    def __init__(self, bus, opath):
+        super(WiredDeviceMock, self).__init__(bus, opath)
+
+        self.properties.update({
+            "DeviceType": networkmanager.Device.DeviceType.ETHERNET,
+            "Interface": "emock0",
+            })
+
+class WirelessDeviceMock(DeviceMock):
+    def __init__(self, bus, opath):
+        super(WirelessDeviceMock, self).__init__(bus, opath)
+
+        self.properties.update({
+            "DeviceType": networkmanager.Device.DeviceType.WIRELESS,
+            "ActiveAccessPoint": "/AP1",
+            "Interface": "wmock0",
+            })
+
+    @dbus.service.method(dbus_interface="org.freedesktop.NetworkManager.Device.Wireless",
+                         in_signature="", out_signature="ao")
+    def GetAccessPoints(self):
+        return ["/AP1", "/AP2"]
+
+class ActiveConnectionMock(DBusMock):
+    def __init__(self, bus, opath):
+        super(ActiveConnectionMock, self).__init__(bus, opath)
+
+        self.properties.update({
+            "ServiceName": "org.freedesktop.NetworkManagerUserSettings",
+            "Connection": "/C1",
+            "SpecificObject": "/AP1",
+            "Devices": ["/D5"],
+            })
+
+class AccessPointMock(DBusMock):
+    def __init__(self, bus, opath):
+        super(AccessPointMock, self).__init__(bus, opath)
+
+        self.properties.update({
+            "Ssid": dbus.ByteArray("mock-ssid"),
+            "HwAddress": "11:22:33:44:55:66",
+            })
+
+class Ip4ConfigMock(DBusMock):
+    def __init__(self, bus, opath):
+        super(Ip4ConfigMock, self).__init__(bus, opath)
+
+        self.properties.update({
+            "Addresses": [(42, 43, 44)],
+            "Nameservers": [42, 43, 44],
+            "Domains": ["mockdom1", "mockdom2"],
+            "Routes": dbus.Array([], signature="au"), # format? fix nmcli
+            })
+
+if __name__ == "__main__":
+    DBusGMainLoop(set_as_default=True)
+
+    networkmanager.base.NM_BUS = dbus.SessionBus()
+    bus = Bus()
+    nmm = NetworkManagerMock(bus)
+    nms = NetworkManagerSettingsMock(bus)
+    c1 = ConnectionMock(bus, "/C1")
+    c2 = ConnectionMock(bus, "/C2")
+    ac = ActiveConnectionMock(bus, "/AC1")
+    d1 = WiredDeviceMock(bus, "/D1")
+    d5 = WirelessDeviceMock(bus, "/D5")
+    ap1 = AccessPointMock(bus, "/AP1")
+    ap2 = AccessPointMock(bus, "/AP2")
+    ic1 = Ip4ConfigMock(bus, "/IC1")
+    loop = gobject.MainLoop()
+    loop.run()

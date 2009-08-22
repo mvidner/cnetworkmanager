@@ -6,6 +6,7 @@ from dbusclient import DBusClient
 from dbusclient.func import *
 from util import Enum, Flags
 from accesspoint import AccessPoint, Mode # for Wireless
+from base import Base
 
 class Ip4Address(object):
     def __init__(self, int32):
@@ -18,7 +19,7 @@ class Ip4Address(object):
             i32 /= 256
         return ".".join(ret)
             
-class IP4Config(DBusClient):
+class IP4Config(Base):
     """
      Properties:    
     Addresses - aau - (read)
@@ -31,7 +32,7 @@ class IP4Config(DBusClient):
     IFACE = "org.freedesktop.NetworkManager.IP4Config"
 
     def __init__(self, opath):
-        super(IP4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+        super(IP4Config, self).__init__(self.SERVICE, opath, default_interface = self.IFACE)
 
 IP4Config._add_adaptors(
     Addresses = PA(identity), #TODO
@@ -40,7 +41,7 @@ IP4Config._add_adaptors(
     Routes = PA(identity), #TODO
     )
 
-class DHCP4Config(DBusClient):
+class DHCP4Config(Base):
     """
      Signals:
     PropertiesChanged ( a{sv}: properties )
@@ -52,14 +53,14 @@ class DHCP4Config(DBusClient):
     IFACE = "org.freedesktop.NetworkManager.DHCP4Config"
 
     def __init__(self, opath):
-        super(DHCP4Config, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+        super(DHCP4Config, self).__init__(self.SERVICE, opath, default_interface = self.IFACE)
 
 #DHCP4Config._add_adaptors(
 #    PropertiesChanged = SA(identity),
 #    Options = PA(identity),
 #    )
 
-class Device(DBusClient):
+class Device(Base):
     """networkmanager device
     
      Signals:
@@ -161,7 +162,7 @@ class Device(DBusClient):
 
     def __init__(self, opath):
         """Inits the base class, unlike _create"""
-        super(Device, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface = self.IFACE)
+        super(Device, self).__init__(self.SERVICE, opath, default_interface = self.IFACE)
 
 
     _constructors = {}

@@ -6,9 +6,10 @@ from dbusclient.func import *
 from applet import Connection
 from device import Device
 from accesspoint import AccessPoint
+from base import Base
 from util import Enum
 
-class ActiveConnection(DBusClient):
+class ActiveConnection(Base):
     """
      Signals:
     PropertiesChanged ( a{sv}: properties )
@@ -29,7 +30,7 @@ class ActiveConnection(DBusClient):
     IFACE = "org.freedesktop.NetworkManager.Connection.Active"
 
     def __init__(self, opath):
-        super(ActiveConnection, self).__init__(dbus.SystemBus(), self.SERVICE, opath, default_interface=self.IFACE)
+        super(ActiveConnection, self).__init__(self.SERVICE, opath, default_interface=self.IFACE)
 
     class State(Enum):
         UNKNOWN = 0

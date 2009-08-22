@@ -1,7 +1,12 @@
 #!/usr/bin/python
 VERSION = "0.21.1"
 
+# must be set before we ask for signals
+from dbus.mainloop.glib import DBusGMainLoop
+DBusGMainLoop(set_as_default=True)
+
 import sys
+import os
 import time
 import dbus
 from networkmanager import NetworkManager
@@ -10,10 +15,8 @@ from networkmanager.applet import NetworkManagerSettings, SYSTEM_SERVICE, USER_S
 from networkmanager.applet.service import NetworkManagerUserSettings
 import networkmanager.applet.settings as settings
 from networkmanager.util import Table
+import networkmanager.base
 
-# must be set before we ask for signals
-from dbus.mainloop.glib import DBusGMainLoop
-DBusGMainLoop(set_as_default=True)
 # for calling quit
 import gobject
 loop = gobject.MainLoop()
@@ -103,9 +106,17 @@ op.add_option("--wpa-pass",
 	      metavar="KEY",
 	      help="use this WPA passphrase")
 
+op.add_option("--session",
+              action="store_true", default=False,
+              help="Connect to the session bus for testing")
+
 (options, args) = op.parse_args()
 
 Table.terse = options.terse
+
+# TODO: CNM_OPTS, like nmcli
+if options.session or os.getenv("CNETWORKMANAGER_TEST") != None:
+    networkmanager.base.NM_BUS = dbus.SessionBus()
 
 nm = NetworkManager()
 
@@ -330,12 +341,12 @@ if options.activate_connection != None:
 
 ######## demo ##########
 
-from dbusclient import DBusMio
-mio = DBusMio(dbus.SystemBus(), "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
-i = mio.Introspect()
-d = mio.GetDevices()
-
 if options.demo:
+    from dbusclient import DBusMio
+    mio = DBusMio(networkmanager.base.Bus(), "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+    i = mio.Introspect()
+    d = mio.GetDevices()
+
     nm = NetworkManager()
 
 # TODO: generic signal (adapt cnm monitor), print name and args
