@@ -28,6 +28,10 @@ class DBusMio(dbus.proxies.ProxyObject):
 
     BUGS: 1st method call will block with introspection"""
 
+    API_OPTIONS = {
+        "byte_arrays": True,
+        }
+
     def __init__(self, conn=None, bus_name=None, object_path=None, introspect=True, follow_name_owner_changes=False, **kwargs):
         """Constructor.
 
@@ -59,7 +63,7 @@ class DBusMio(dbus.proxies.ProxyObject):
                 iface = i
 #        print "METHOD %s INTERFACE %s" %(name, iface)
         callable = super(DBusMio, self).__getattr__(name)
-        return functools.partial(callable, dbus_interface=iface, byte_arrays=True)
+        return functools.partial(callable, dbus_interface=iface, **DBusMio.API_OPTIONS)
 
     # properties
     def __getitem__(self, key):
@@ -75,7 +79,7 @@ class DBusMio(dbus.proxies.ProxyObject):
         iface = self.__default_interface # TODO cache
         # TODO _introspect_property_map
         pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
-        return pmi.Get(iface, key, byte_arrays=True)
+        return pmi.Get(iface, key, **DBusMio.API_OPTIONS)
 
     def __setitem__(self, key, value):
         """Proxies DBus properties as dictionary items.
@@ -90,7 +94,7 @@ class DBusMio(dbus.proxies.ProxyObject):
         iface = self.__default_interface # TODO cache
         # TODO _introspect_property_map
         pmi = dbus.Interface(self, "org.freedesktop.DBus.Properties")
-        return pmi.Set(iface, key, value, byte_arrays=True)
+        return pmi.Set(iface, key, value, **DBusMio.API_OPTIONS)
 
 def _mklist(x):
     """Return a list.
