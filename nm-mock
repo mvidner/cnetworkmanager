@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 # TODO: adapt nm lib to connect to session bus too, and try this mock
 
@@ -83,7 +84,8 @@ class ConnectionMock(DBusMock):
     def GetSettings(self):
         return {
             "connection": {
-                "id": "mockid",
+                # testing non-ASCII output: str vs unicode
+                "id": "moje síť", # "my net"
                 "type": "mocktype"
                 },
             "section1": {

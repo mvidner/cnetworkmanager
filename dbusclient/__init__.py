@@ -30,6 +30,7 @@ class DBusMio(dbus.proxies.ProxyObject):
 
     API_OPTIONS = {
         "byte_arrays": True,
+        "utf8_strings": True,
         }
 
     def __init__(self, conn=None, bus_name=None, object_path=None, introspect=True, follow_name_owner_changes=False, **kwargs):
