@@ -1,0 +1,97 @@
+<html>
+<head>
+<title>Migrating from cnetworkmanager to nmcli</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="keywords"
+content="cnetworkmanager, nmcli, conversion, correspondence, migration">
+</head>
+<h1>Migrating from cnetworkmanager to nmcli</h1>
+
+This is not meant to be a two-way comparison. I intend cnetworkmanager to
+<a href="http://en.wikipedia.org/wiki/Dead_Parrot_sketch">rest</a> and
+<a href="http://fedoraproject.org/wiki/Features/NetworkManagerCmdline"
+>nmcli</a> to take its place.
+
+<table border>
+<tr>
+<th>cnnetworkmanager
+<th>nmcli
+
+<tr>
+<th colspan=2>general
+
+<tr>
+<td>cnetworkmanager --state
+<td>nmcli nm
+<br>nmcli -t -f state nm
+
+<tr>
+<td>cnetworkmanager --online=BOOL
+<td>nmcli nm sleep
+<br>nmcli nm wakeup
+
+<tr>
+<td>cnetworkmanager --we
+<br>cnetworkmanager --wireless-enabled
+<td>nmcli nm wifi
+
+<tr>
+<td>cnetworkmanager --whe
+<br>cnetworkmanager --wireless-hardware-enabled
+<td>nmcli -t -f wifi-hardware nm
+
+<tr>
+<td>cnetworkmanager --wifi=BOOL
+<td>nmcli nm wifi BOOL
+
+<tr>
+<th colspan=2>devices
+
+<tr>
+<td>cnetworkmanager -d
+<br>cnetworkmanager --device-list
+<td>nmcli dev
+
+<tr>
+<td>cnetworkmanager --di DEVICE
+<br>cnetworkmanager --device-info DEVICE
+<td>nmcli dev list iface DEVICE
+
+<tr>
+<td>cnetworkmanager -a, -n, --ap-list, --ap, --nets
+<td>nmcli dev wifi list
+
+<tr>
+<th colspan=2>connections
+
+<tr>
+<td>cnetworkmanager -u
+<br>cnetworkmanager -s
+<br>cnetworkmanager --usrcon
+<br>cnetworkmanager --syscon
+<td>nmcli con
+<br>nmcli con list user
+<br>nmcli con list system
+
+<tr>
+<td>cnetworkmanager --activate-connection=[KIND],ID,[DEV],[APMAC]
+<td>nmcli con up id ID iface DEV ap APMAC
+
+<tr>
+<td>cnetworkmanager -c
+<br>cnetworkmanager --actcon
+<td>nmcli con status
+
+<tr>
+<td>cnetworkmanager -C
+<br>cnetworkmanager --connect
+<td>N/A, nmcli cannot serve as a connection service,<br>
+nor it can add a connection to a service (which cnetworkmanager can't either)
+
+<!--
+<tr>
+<td>cnetworkmanager 
+<td>nmcli 
+
+-->
+</table>
